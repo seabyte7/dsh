@@ -1,6 +1,6 @@
 import type { DesktopAutoUpdateTarget } from './desktop-auto-update-environment.mjs'
 
-/** Mutable target directories plus the shared immutable download cache. */
+/** Mutable preparation directories, visible artifact directories, and the shared immutable download cache. */
 export interface DesktopTargetBuildPaths {
   readonly root: string
   readonly artifacts: string
@@ -31,7 +31,14 @@ export function resolveDesktopBuildTarget(
 ): DesktopAutoUpdateTarget
 
 /**
- * Return the mutable preparation and artifact directories owned by one release target.
+ * Resolve the visible repository directory that holds every target's release artifacts.
+ * @param appRoot - Desktop application directory; defaults to this module's owning app.
+ * @returns Absolute directory containing one subdirectory per release target.
+ */
+export function desktopArtifactRoot(appRoot?: string): string
+
+/**
+ * Return the mutable preparation directories and the visible artifact directories owned by one release target.
  * @param target - Supported Desktop target name.
  * @returns Target paths plus the shared immutable download cache.
  */

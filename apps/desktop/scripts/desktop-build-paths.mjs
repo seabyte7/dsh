@@ -4,7 +4,17 @@ import { join, resolve } from 'node:path'
 
 const APP_ROOT = resolve(import.meta.dirname, '..')
 const BUILD_ROOT = join(APP_ROOT, '.desktop-build')
+const ARTIFACT_ROOT = resolve(APP_ROOT, '../../dist/desktop')
 const SUPPORTED_TARGETS = new Set(['mac-arm64', 'mac-x64', 'win-x64'])
+
+/**
+ * Resolve the visible repository directory that holds every target's release artifacts.
+ * @param {string} [appRoot] - Desktop application directory; defaults to this module's owning app.
+ * @returns {string} Absolute directory containing one subdirectory per release target.
+ */
+export function desktopArtifactRoot(appRoot = APP_ROOT) {
+  return resolve(appRoot, '../../dist/desktop')
+}
 
 /**
  * Resolve the fixed build target selected by a packaging environment.
@@ -36,7 +46,7 @@ function assertSupportedTarget(target) {
 }
 
 /**
- * Return the mutable preparation and artifact directories owned by one release target.
+ * Return the mutable preparation directories and the visible artifact directories owned by one release target.
  * @param {'mac-arm64' | 'mac-x64' | 'win-x64'} target - Supported Desktop target name.
  * @returns {{ root: string, artifacts: string, unsignedArtifacts: string, unnotarizedArtifacts: string, runtime: string, packageSet: string, dsh: string, dshPnpm: string, electron: string, packedDsh: string, packedVendor: string, packedLandlock: string, downloads: string }} Target paths plus the shared immutable download cache.
  */
@@ -46,9 +56,9 @@ export function desktopTargetBuildPaths(target) {
   const packed = join(root, 'packed')
   return {
     root,
-    artifacts: join(root, 'artifacts'),
-    unsignedArtifacts: join(root, 'unsigned-artifacts'),
-    unnotarizedArtifacts: join(root, 'unnotarized-artifacts'),
+    artifacts: join(ARTIFACT_ROOT, target, 'artifacts'),
+    unsignedArtifacts: join(ARTIFACT_ROOT, target, 'unsigned-artifacts'),
+    unnotarizedArtifacts: join(ARTIFACT_ROOT, target, 'unnotarized-artifacts'),
     runtime: join(root, 'runtime'),
     packageSet: join(root, 'package-set'),
     dsh: join(root, 'dsh'),

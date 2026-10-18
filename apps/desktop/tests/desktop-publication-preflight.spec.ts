@@ -10,10 +10,11 @@ import { prepareDesktopPublication } from '../scripts/publish-desktop-ci.ts'
 it.each(['mac-arm64', 'win-x64'] as const)('preflights a complete retained %s build without credentials or source checkout manifests', async (target) => {
   const root = await mkdtemp(join(tmpdir(), 'desktop-preflight-'))
   try {
-    const app = join(root, 'app')
+    const app = join(root, 'app', 'apps', 'desktop')
     const configRoot = join(root, 'packaging')
-    const artifacts = join(app, '.desktop-build/targets', target, 'artifacts')
+    const artifacts = join(root, 'app', 'dist', 'desktop', target, 'artifacts')
     await mkdir(artifacts, { recursive: true })
+    await mkdir(app, { recursive: true })
     await mkdir(join(configRoot, 'presets'), { recursive: true })
     await mkdir(join(configRoot, 'publishing'))
     await writeFile(join(app, 'package.json'), JSON.stringify({ version: '1.0.0' }))

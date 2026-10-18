@@ -69,6 +69,7 @@ export class RepositoryCleaner {
 
     await this.addIfPresent(targets, join(this.root, '.dsh-build'), canonicalRoot)
     await this.addIfPresent(targets, join(this.root, 'apps/desktop/.desktop-build'), canonicalRoot)
+    await this.addIfPresent(targets, join(this.root, 'dist/desktop'), canonicalRoot)
 
     // These checks cover legacy root-level incremental state emitted by older configs.
     await this.addIfPresent(targets, join(this.root, '.typecheck'), canonicalRoot)

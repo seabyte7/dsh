@@ -14,11 +14,12 @@ it.each([
 ] as const)('retains the complete %s %s release without signing or upload credentials', async (target, qualification) => {
   const root = await mkdtemp(join(tmpdir(), 'retain-ci-'))
   roots.push(root)
-  const appRoot = join(root, 'checkout')
+  const appRoot = join(root, 'checkout', 'apps', 'desktop')
   const config = join(root, 'packaging')
   const debug = qualification === 'unsigned' || qualification === 'unnotarized'
-  const artifacts = join(appRoot, '.desktop-build', 'targets', target, debug ? `${qualification}-artifacts` : 'artifacts')
+  const artifacts = join(root, 'checkout', 'dist', 'desktop', target, debug ? `${qualification}-artifacts` : 'artifacts')
   await mkdir(artifacts, { recursive: true })
+  await mkdir(appRoot, { recursive: true })
   await mkdir(join(config, 'presets'), { recursive: true })
   await writeFile(join(appRoot, 'package.json'), '{"version":"1.0.0"}')
   await writeFile(join(config, 'presets/test.env'), `DSH_DESKTOP_AUTO_UPDATE_ENV=test\nDOWNLOAD_TEST_RELEASE_ID=${'a'.repeat(32)}\n`)
