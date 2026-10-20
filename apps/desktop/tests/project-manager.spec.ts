@@ -43,6 +43,31 @@ afterEach(() => {
 })
 
 describe('desktop external plugin profile', () => {
+  it('enables side chat in a new profile and preserves a later disabled selection', async () => {
+    const { manager } = setup()
+    const path = join(manager.paths.profile, 'package.json')
+    const bundle = '@deepseek-ai/dsh-side-chat-bundle'
+    await manager.applyRelease()
+    const manifest = JSON.parse(readFileSync(path, 'utf8')) as { dsh: { profile: { bundles: string[] } } }
+    expect(manifest.dsh.profile.bundles).toContain(bundle)
+    manifest.dsh.profile.bundles = manifest.dsh.profile.bundles.filter(name => name !== bundle)
+    writeFileSync(path, JSON.stringify(manifest))
+
+    await manager.applyRelease()
+
+    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual(manifest)
+  })
+
+  it('disables side chat during native plugin recovery', async () => {
+    const { manager } = setup()
+    await manager.applyRelease()
+    await manager.disableAllPlugins()
+    const manifest = JSON.parse(readFileSync(join(manager.paths.profile, 'package.json'), 'utf8')) as {
+      dsh: { profile: { bundles: string[] } }
+    }
+    expect(manifest.dsh.profile.bundles).toEqual(['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'])
+  })
+
   it('preserves installed packages, profile state, and the lockfile when preparing a launch', async () => {
     const { manager } = setup()
     await manager.applyRelease()

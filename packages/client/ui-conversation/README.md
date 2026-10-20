@@ -126,12 +126,14 @@ interface ComposerChainProps {
   sessionId: SessionId | undefined
   /** Current Session lifecycle state, absent without a selected Session. */
   session: SessionSnapshot | undefined
+  /** Current list projection values used by pure composer selectors. */
+  projectionValues?: SessionListState['byId'][SessionId]['projectionValues']
   /** Effective business-owned interaction awaiting the user in this Session. */
   pendingInteraction: SessionPendingInteraction | undefined
 }
 ```
 
-A business package may install one entry only while a Remote waterfall request is pending:
+A business package selects an entry from these reactive owner values. A temporary Remote interaction can install an entry only while its waterfall request is pending:
 
 ```tsx
 import type { ComposerChainProps } from '@deepseek-ai/dsh-client-ui-conversation/client'

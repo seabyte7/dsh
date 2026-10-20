@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Side chat service",
+    "description": "Independent question sessions with durable associations and fixed source snapshots."
+  }
+}

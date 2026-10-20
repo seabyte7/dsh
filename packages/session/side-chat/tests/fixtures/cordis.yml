@@ -1,0 +1,61 @@
+- id: llm
+  name: cordis:llm
+- id: sessions
+  name: cordis:sessions
+- id: projections
+  name: cordis:projections
+- id: system
+  name: cordis:system
+- id: tools
+  name: cordis:tools
+- id: agents
+  name: cordis:agents
+- id: persistence
+  name: cordis:persistence
+  config:
+    root: '{{root}}/sessions'
+    compression: none
+- id: query
+  name: cordis:query
+  config:
+    path: ':memory:'
+    openAt: never
+- id: storage
+  name: cordis:storage
+- id: storage-json
+  name: cordis:storage-json
+  config:
+    root: '{{root}}/data'
+- id: domain
+  name: cordis:domain
+  config:
+    backend: json
+- id: workspaces
+  name: cordis:workspaces
+- id: access
+  name: cordis:access
+- id: references
+  name: cordis:references
+  config:
+    maxReferenceBytes: 1024
+- id: preset-registry
+  name: cordis:preset-registry
+  config:
+    default: question
+- id: question-preset
+  name: cordis:preset
+  config:
+    id: question
+    plugins:
+      - id: initializer
+        name: cordis:side-chat-question
+- id: side-chat
+  name: cordis:side-chat
+  config:
+    agentPreset: question
+    provider: fixture
+    model: question
+- id: loop
+  name: cordis:loop
+  config:
+    agents: []

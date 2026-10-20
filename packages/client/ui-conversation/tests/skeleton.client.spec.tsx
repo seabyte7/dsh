@@ -192,6 +192,7 @@ function mount(
   const useConversationViews: SessionSlotProps['useConversationViews'] = selector => selector(viewTabs)
   /** Owner share handed to the two composer tool-row seats, per render. */
   const seatOwners: { key: string; owner: unknown }[] = []
+  const chainOwners: { projectionValues?: SessionListState['byId'][SessionId]['projectionValues'] }[] = []
   let pickerOwner: unknown
   const renderSlot = ((key: string, owner: object, opts?: { only?: string; fallback?: ReactNode }) => {
     slotCalls.push(key)
@@ -311,18 +312,21 @@ function mount(
     }
     return <div data-testid={`view-${opts?.only ?? key}`} />
   }) as ConversationContentProps['renderSlot']
-  const renderSlotChain = ((_key, _owner, opts) => (
-    options.overlayTakeover === true
-      ? (
-        <>
-          <div data-chain-overlay-fallback="conversation.composer" style={{ display: 'none' }}>
-            {opts?.fallback ?? null}
-          </div>
-          <div data-testid="composer-takeover">TAKEOVER</div>
-        </>
-      )
-      : (opts?.fallback ?? null)
-  )) as ConversationContentProps['renderSlotChain']
+  const renderSlotChain = ((_key, owner, opts) => {
+    chainOwners.push(owner)
+    return (
+      options.overlayTakeover === true
+        ? (
+          <>
+            <div data-chain-overlay-fallback="conversation.composer" style={{ display: 'none' }}>
+              {opts?.fallback ?? null}
+            </div>
+            <div data-testid="composer-takeover">TAKEOVER</div>
+          </>
+        )
+        : (opts?.fallback ?? null)
+    )
+  }) as ConversationContentProps['renderSlotChain']
   const SessionProvider: ConversationContentProps['SessionProvider'] = ({ children }) => children
   const renderFactorySlot = ((_name: string, input: ConversationContentInputProps, factoryOptions?: {
     slots?: Record<string, (props: never) => ReactNode>
@@ -379,7 +383,7 @@ function mount(
   const props: ConversationSlotProps = { ...runtimeProps, renderSlot, renderFactorySlot }
   const view = render(<ConversationMainPanel {...props} />)
   return {
-    view, store, wiring, sink, retargetWorkspace, session, conversation, slotCalls, lineageOwners, seatOwners, open,
+    view, store, wiring, sink, retargetWorkspace, session, sessions, conversation, slotCalls, lineageOwners, seatOwners, chainOwners, open,
     pickerOwner: () => pickerOwner,
     rerender: () => { view.rerender(<ConversationMainPanel {...props} />) },
   }
@@ -404,6 +408,26 @@ describe('Hero chrome', () => {
 })
 
 describe('ConversationRoot resident composer', () => {
+  it('publishes the selected Session projections to composer selection without copying another Session', () => {
+    const b = mount(sessionSnapshotOf())
+    expect(b.chainOwners.at(-1)?.projectionValues).toBeUndefined()
+    const projectionValues = { agentPreset: 'question-preset' }
+    act(() => {
+      const current = b.sessions.getSnapshot()
+      const selected = current.byId[SID]!
+      b.sessions.set({ ...current, byId: { ...current.byId, [SID]: { ...selected, projectionValues } } })
+    })
+    expect(b.chainOwners.at(-1)?.projectionValues).toBe(projectionValues)
+    act(() => {
+      const current = b.sessions.getSnapshot()
+      const other = current.byId[sid('root')]!
+      b.sessions.set({ ...current, byId: {
+        ...current.byId, [sid('root')]: { ...other, projectionValues: { agentPreset: 'ordinary-preset' } },
+      } })
+    })
+    expect(b.chainOwners.at(-1)?.projectionValues).toBe(projectionValues)
+  })
+
   it('keeps global header navigation without selecting a Session', () => {
     const b = mount(sessionSnapshotOf(), [], undefined, { sessionId: undefined })
     expect(b.view.container.querySelector('header')).not.toBeNull()

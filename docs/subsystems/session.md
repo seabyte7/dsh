@@ -809,6 +809,56 @@ The backends that consume this contract are on [persistence.md](persistence.md).
 
 The optional `application` selects a registered file handler without changing the system default; `workspacePathApplications({ path })` returns current handlers, names, icons, and default selection after Host path verification.
 
+## `SideChat` request and snapshot types
+
+```ts type-equiv
+/** Stable identity of one ensure operation, retained across uncertain responses. */
+type SideChatRequestId = Branded<'SideChatRequestId'>
+```
+
+```ts type-equiv
+/** Source conversation whose one associated question Session is addressed. */
+interface SideChatLookupRequest {
+  readonly sourceSessionId: SessionId
+}
+```
+
+```ts type-equiv
+/** Idempotent association creation request; it never submits a prompt. */
+interface SideChatEnsureRequest extends SideChatLookupRequest {
+  readonly requestId: SideChatRequestId
+}
+```
+
+```ts type-equiv
+/** Committed text snapshot facts; the referenced text remains in the Session log. */
+interface SideChatSnapshot {
+  readonly sourceSessionId: SessionId
+  readonly capturedThroughSeq: OptionalSessionSeq
+  readonly capturedFormatVersion: number
+  readonly truncated: boolean
+  readonly omittedBytes: number
+  readonly omittedMessages: number
+}
+```
+
+```ts type-equiv
+/** Existing association and its first committed snapshot, when available. */
+interface SideChatLookupValue {
+  readonly sessionId?: SessionId
+  readonly snapshot?: SideChatSnapshot
+}
+```
+
+```ts type-equiv
+/** The sole target assigned to the source, including on repeated requests. */
+interface SideChatEnsureValue {
+  readonly sessionId: SessionId
+}
+```
+
+Source: [`packages/session/side-chat/src/types.ts`](../../packages/session/side-chat/src/types.ts)
+
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
 <a id="cordis-surface"></a>
@@ -1140,6 +1190,49 @@ fork(source: SessionForkSource, boundary?: SessionSeq, childSessionId?: SessionI
 Types: [CreateSessionOptions](persistence.md) · [PrepareSessionOptions](persistence.md) · [SessionId](core.md)
 
 Source: [`packages/core/session/src/index.ts`](../../packages/core/session/src/index.ts)
+
+<a id="ctxsidechat--sidechat"></a>
+
+### `ctx.sideChat` — `SideChat`
+
+One Host owns association writes, creation handles, and admission of restored question Agents.
+
+```ts cordis-catalog
+/**
+ * Find an existing association without creating or resuming an Agent.
+ * Missing, archived, migrating, nested, and inaccessible Sessions reject explicitly.
+ * @param request - source Session identity.
+ * @param signal - optional caller cancellation before reads complete.
+ * @returns its associated Session and committed snapshot, or an empty object.
+ */
+@Remote({ resources: { session: (request: SideChatLookupRequest) => request.sourceSessionId } }) async lookup(request: SideChatLookupRequest, signal?: AbortSignal): Promise<SideChatLookupValue>
+
+/**
+ * Allocate and create the sole question Session for a source. Concurrent and repeated calls reuse
+ * the durable target identity; this operation never submits a prompt or replaces a missing ready target.
+ * @param request - source identity and stable creation request identity.
+ * @param signal - optional caller cancellation before durable allocation; later creation remains Host-owned.
+ * @returns the same target after Session durability and association commit.
+ */
+@Remote({ resources: { session: (request: SideChatEnsureRequest) => request.sourceSessionId } }) async ensure(request: SideChatEnsureRequest, signal?: AbortSignal): Promise<SideChatEnsureValue>
+
+/**
+ * Register the scoped question initializer before a preset can create Sessions.
+ * @param scope - preset-generation context mounting the question entry.
+ */
+registerQuestion(scope: Context): void
+
+/**
+ * Install question admission on an Agent announced inside the question preset. The Agent owns
+ * these effects, so restrictions survive preset removal; Controller-restored handles remain Controller-owned.
+ * @param agent - newly created or restored independent Agent.
+ */
+attachQuestion(agent: Agent): void
+```
+
+Types: [Agent](core.md)
+
+Source: [`packages/session/side-chat/src/index.ts`](../../packages/session/side-chat/src/index.ts)
 
 <a id="api-session-events"></a>
 

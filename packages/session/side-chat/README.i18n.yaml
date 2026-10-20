@@ -1,0 +1,55 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/session/side-chat/README.md
+/:
+  en: d93c008ad1dc495c
+  zh: 9bb1f87e5e417b1d
+/deepseek-ai-dsh-side-chat:
+  en: 0128bc7942377dc8
+  zh: 87008ede97576d99
+/deepseek-ai-dsh-side-chat/summary:
+  en: e497fa06ad9f070b
+  zh: 66df8c154c57798c
+/deepseek-ai-dsh-side-chat/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 405b30feaf48c087
+/deepseek-ai-dsh-side-chat/use-this-package:
+  en: 154e244b61c60a05
+  zh: 7b130a640da08dab
+/deepseek-ai-dsh-side-chat/use-this-package/configuration:
+  en: 96a176e6ff12f0a5
+  zh: e30f81b935fa4ca4
+/deepseek-ai-dsh-side-chat/use-this-package/association-and-first-input:
+  en: 2d852be3a5a58cf9
+  zh: 506cde7b060b9629
+/deepseek-ai-dsh-side-chat/use-this-package/access-failures-and-recovery:
+  en: a563b21a79d5bf9b
+  zh: c2ebeba419594b01
+/deepseek-ai-dsh-side-chat/understand-the-implementation:
+  en: 74cc15e1ba0ced7d
+  zh: c45005d2da37b6b7
+/deepseek-ai-dsh-side-chat/further-exploration:
+  en: d62df2c19ea018d1
+  zh: a62b9d5b3cda742b
+/deepseek-ai-dsh-side-chat/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-side-chat/model-experience/independent-question-context:
+  en: 9e67453eaae06bae
+  zh: 60cf69fa47b5ae25
+/deepseek-ai-dsh-side-chat/model-experience/independent-question-context/what-the-model-sees:
+  en: 32d9ba6eb36d8225
+  zh: 3ae7879acd2a0cad
+/deepseek-ai-dsh-side-chat/model-experience/independent-question-context/token-effect:
+  en: b4781a992b70473f
+  zh: 640f3f9a18a6376d
+/deepseek-ai-dsh-side-chat/model-experience/independent-question-context/kv-cache-effect:
+  en: daea99b22d8b52a0
+  zh: a61b54eaadece5ad
+/deepseek-ai-dsh-side-chat/known-limitations-and-deferred-work:
+  en: 8a27c77be13b31e8
+  zh: c187680b8c4f0e57
+/deepseek-ai-dsh-side-chat/known-limitations-and-deferred-work/dev-note:
+  en: 7574714184ae44ce
+  zh: 0dfb2039762b4c56

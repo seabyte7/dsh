@@ -16,6 +16,9 @@ export interface ProductPackagePolicy {
  * Optional integrations may be reached by an optional bundle without becoming default capabilities.
  */
 export const PRODUCT_PACKAGE_POLICY: Readonly<Record<string, ProductPackagePolicy>> = {
+  'packages/session/side-chat': { category: 'optional', reason: 'Independent question Sessions enabled by the optional side-chat bundle.' },
+  'packages/client/ui-side-chat': { category: 'optional', reason: 'Right-side question panel enabled by the optional side-chat bundle.' },
+  'packages/bundle/side-chat': { category: 'optional', reason: 'Opt-in personal question sidebar; shipped profiles remain unchanged.' },
   'packages/browser-use/browser-use': { category: 'optional', reason: 'Service definition used by explicitly selected browser providers.' },
   'packages/computer-use/computer-use': { category: 'optional', reason: 'Service definition used by explicitly selected computer providers.' },
   'packages/lsp/lsp': { category: 'optional', reason: 'Service definition for deployment-configured language servers.' },

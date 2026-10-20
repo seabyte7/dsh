@@ -1,0 +1,78 @@
+/** Side-chat copy belongs to this package in both supported locales. */
+/** Dictionary namespace owned by the side-chat presentation. */
+export const NS = 'sideChat'
+
+/** Simplified Chinese dictionary and key source. */
+export const zh = {
+  'title': '侧聊',
+  'question': '向侧聊提问',
+  'placeholder': '基于主聊天提问…',
+  'snapshot.pending': '首次回答会读取主聊天的文本快照',
+  'snapshot.ready': '基于主聊天文本快照（截至事件 {seq}）',
+  'snapshot.cropped': '上下文已裁剪',
+  'snapshot.incomplete': '上下文尚未初始化；再次发送将重新准备快照',
+  'empty': '在这里追问，主任务会继续运行',
+  'send': '发送',
+  'stop': '停止侧聊',
+  'retry': '重试加载',
+  'unavailable': '侧聊暂不可用',
+  'failed': '无法打开侧聊：{reason}',
+  'handoffFailed': '问题未发送，草稿已保留，请重新打开侧聊后重试',
+  'sendFailed': '无法发送：{reason}',
+  'readonly': '此侧聊当前只读',
+  'loading': '正在加载侧聊',
+  'slashUnsupported': '侧聊不支持斜杠命令，请用普通文本提问',
+  'attachmentsUnsupported': '侧聊仅支持文本，请先移除已有附件再发送',
+  'removeAttachments': '移除附件',
+  'failure.closed': '侧聊插件已停用，请启用插件后重新打开',
+  'failure.owner-required': '当前访问权限不允许读取此聊天，请检查会话访问权限',
+  'failure.not-found': '聊天已不存在，请返回主聊天确认',
+  'failure.archived': '聊天已归档，请取消归档后重试',
+  'failure.migration-required': '聊天需要升级，请先在主界面完成会话升级',
+  'failure.nested': '不能从侧聊创建另一个侧聊，请返回主聊天',
+  'failure.preset': '侧聊预设不可用，请检查侧聊插件配置',
+  'failure.tools': '侧聊预设包含工具，请使用仅支持文本的侧聊预设',
+  'failure.input': '此问题不受支持，请使用普通文本且不要引用其他聊天',
+  'failure.association': '侧聊关联不一致，请检查保留的会话数据',
+  'failure.storage': '侧聊数据无法保存，请检查存储后重试',
+  'failure.context': '主聊天快照尚未准备好，请重试发送问题',
+} as const
+
+/** Supported side-chat translation keys. */
+export type SideChatKey = keyof typeof zh
+
+/** English dictionary with the same keys as the Chinese dictionary. */
+export const en: Record<SideChatKey, string> = {
+  'title': 'Side chat',
+  'question': 'Ask the side chat',
+  'placeholder': 'Ask about the main chat…',
+  'snapshot.pending': 'The first answer uses a text snapshot of the main chat',
+  'snapshot.ready': 'Based on a main-chat text snapshot (through event {seq})',
+  'snapshot.cropped': 'Context was cropped',
+  'snapshot.incomplete': 'Context is not initialized; sending again prepares a new snapshot',
+  'empty': 'Ask a follow-up here while the main task continues',
+  'send': 'Send',
+  'stop': 'Stop side chat',
+  'retry': 'Retry loading',
+  'unavailable': 'Side chat is unavailable',
+  'failed': 'Cannot open side chat: {reason}',
+  'handoffFailed': 'The question was not sent. Your draft is kept; reopen the side chat and retry',
+  'sendFailed': 'Cannot send: {reason}',
+  'readonly': 'This side chat is currently read-only',
+  'loading': 'Loading side chat',
+  'slashUnsupported': 'Side chat does not support slash commands. Ask using ordinary text',
+  'attachmentsUnsupported': 'Side chat accepts text only. Remove existing attachments before sending',
+  'removeAttachments': 'Remove attachments',
+  'failure.closed': 'The side-chat plugin is disabled. Enable it and reopen the side chat',
+  'failure.owner-required': 'Current access does not permit this chat. Check Session access permissions',
+  'failure.not-found': 'The chat no longer exists. Return to the main chat to check it',
+  'failure.archived': 'The chat is archived. Unarchive it and retry',
+  'failure.migration-required': 'The chat needs an upgrade. Complete the Session upgrade in the main view',
+  'failure.nested': 'A side chat cannot open another side chat. Return to the main chat',
+  'failure.preset': 'The side-chat preset is unavailable. Check the side-chat plugin configuration',
+  'failure.tools': 'The side-chat preset contains tools. Use a text-only question preset',
+  'failure.input': 'This question is unsupported. Use plain text without references to other chats',
+  'failure.association': 'The side-chat association is inconsistent. Check the retained Session data',
+  'failure.storage': 'Side-chat data could not be saved. Check storage and retry',
+  'failure.context': 'The main-chat snapshot is not ready. Retry sending the question',
+}

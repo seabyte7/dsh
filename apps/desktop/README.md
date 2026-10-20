@@ -78,6 +78,8 @@ The confirmation is skipped when the installer restart already confirmed task in
 
 The tray renderer enlarges the whale by 20% around the tile center while preserving the background and aspect ratio; application and installer icons retain their original proportions.
 
+New Desktop profiles enable Side chat by default. Its Plugins card can enable or disable the bundle; existing profiles retain their selection through upgrades. Native plugin recovery disables Side chat together with other optional bundles.
+
 <a id="key-technical-decisions"></a>
 
 ## Key technical decisions

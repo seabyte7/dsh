@@ -26,6 +26,7 @@ kind: "package-group"
 
 | 包 | 职责 | ctx 键 |
 |---|---|---|
+| [`ui-side-chat/`](ui-side-chat/README.zh.md) | 右侧栏中的可选独立问答面板 | — |
 | [`web/`](web/README.zh.md) | 启动浏览器外壳 | — |
 | [`modules/`](modules/README.zh.md) | 加载浏览器侧客户端模块 | `ctx.clientModules` / `ctx.modules` |
 | [`connection/`](connection/README.zh.md) | 维护浏览器与宿主之间的 RPC 通信与事件投递 | `ctx.connection` |

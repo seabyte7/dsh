@@ -33,6 +33,7 @@ export function ConversationContent(props: ConversationContentProps) {
     sessionId === undefined ? undefined : snapshot.get(sessionId)?.pendingInteraction)
   const inputState = useInput(s => s)
   const cwd = useSessions(s => sessionId === undefined ? undefined : s.byId[sessionId]?.cwd)
+  const projectionValues = useSessions(s => sessionId === undefined ? undefined : s.byId[sessionId]?.projectionValues)
   const workspaces = useWorkspaces(s => s)
   // A plugin this package cannot import (ui-model-selection) says this session cannot
   // send; its reason is already localized by whoever raised it.
@@ -172,7 +173,7 @@ export function ConversationContent(props: ConversationContentProps) {
 
   const composer = renderSlotChain(
     'conversation.composer',
-    { sessionId, session, pendingInteraction },
+    { sessionId, session, projectionValues, pendingInteraction },
     { fallback: composerBar, fallbackOnly: sessionId === undefined, overlay: true },
   )
 

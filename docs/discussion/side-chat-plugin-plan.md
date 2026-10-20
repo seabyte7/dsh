@@ -1,5 +1,5 @@
 ---
-description: "侧聊插件开发提案：独立问答、上下文快照、插件装配、恢复策略、修改范围与验收要求，供实施前审核。"
+description: "侧聊插件开发与验收记录：个人自用的独立问答、固定上下文快照、可选装配、恢复和资源释放，功能待审核。"
 ---
 
 # 侧聊插件开发方案
@@ -8,9 +8,9 @@ description: "侧聊插件开发提案：独立问答、上下文快照、插件
 
 本提案让用户在主任务继续执行时，从右侧面板发起独立问答。首版通过新插件组合已有会话、上下文引用、聊天 Factory 和右侧标签机制，默认不修改普通聊天、fork、子代理或 Agent 执行循环。
 
-状态：P0 已进行本地验证，方案待审核，功能尚未实现。验证日期：2026-10-20。独立运行、上下文持久化和冷恢复已有测试依据；完整面板生命周期和可选部署装配尚未闭环，因此不宣称全部 P0 验收通过。首版按个人自用、单用户环境开发，非 owner 和共享会话支持不属于本次范围。本次文档提交仅包含中文提案及单页翻译排除登记，不包含生产功能或测试代码。
+状态：功能已实现，待审核，未提交、推送或发布。验证日期：2026-10-20。按个人自用、单用户环境实施，保留现有可信 owner、Session 和工作区权限检查，不支持非 owner 或共享会话。独立问答、固定快照、持久化恢复和面板生命周期已完成定向验证；实际证据与剩余限制见[本次实现与验证](#implementation-results)。
 
-本文选择“独立新会话加已有上下文引用”，不选择完整事件 fork。上下文范围因此是已有引用服务提供的文本快照，不能宣称与主模型当前请求完全相同。该范围是本提案需要确认的产品约定。
+本文选择“独立新会话加已有上下文引用”，不选择完整事件 fork。上下文范围因此是已有引用服务提供的文本快照，不能宣称与主模型当前请求完全相同。本次实现采用这个上下文范围。
 
 ## 目录
 
@@ -21,6 +21,7 @@ description: "侧聊插件开发提案：独立问答、上下文快照、插件
 - [数据、恢复与权限](#recovery)
 - [界面与配置](#ui)
 - [实施步骤与验收](#delivery)
+- [本次实现与验证](#implementation-results)
 - [P0 验证结果与审核项](#p0-results)
 - [开发执行要求](#implementation-instructions)
 - [开发备注](#dev-note)
@@ -47,7 +48,7 @@ description: "侧聊插件开发提案：独立问答、上下文快照、插件
 <a id="extension-points"></a>
 ## 现有扩展点核对
 
-以下结论来自对应代码和说明的静态核对。链接指向已有实现，不表示新插件已经通过集成测试。
+下表列出本次实现复用的已有能力；各插件的具体配置和行为以包 README 为准。
 
 | 能力 | 已有依据 | 本方案的使用方式 |
 |---|---|---|
@@ -68,9 +69,9 @@ description: "侧聊插件开发提案：独立问答、上下文快照、插件
 <a id="composition"></a>
 ## 插件组成与修改范围
 
-新增两个功能包和一个可选装配包。以下名称是拟定名称，尚不存在；最终登记必须遵循仓库包命名、依赖分类和生成规则。
+实现包含两个功能包和一个可选装配包，按现有包命名、依赖分类和生成规则登记。
 
-| 拟新增目录 | 职责 |
+| 新增目录 | 职责 |
 |---|---|
 | `packages/session/side-chat/` | Host 服务、Remote 方法、关联存储、创建协调、上下文初始化及 scoped 插件入口 |
 | `packages/client/ui-side-chat/` | 头部入口、标签类型、资源 Provider、空面板、会话绑定、状态和本地化文案 |
@@ -85,12 +86,12 @@ Host 包拥有服务定义、默认实现和生成的 Remote 类型；Client 通
 | 主要新增 | 三个新包的源码、README、语言字典、测试及装配文件 |
 | 仓库接入 | 必要的依赖清单、锁文件、TypeScript 引用、包分类和生成的 Remote/文档登记 |
 | 行为说明 | 新包文档与必要的现有索引链接 |
-| 默认不修改 | `agent-loop`、既有 `session/fork`、`api/session-controller` 的业务逻辑、`ui-subagent`、`ui-chat`、`ui-conversation`、`ui-sidebar-right` 的业务实现 |
+| 保持现有实现 | `agent-loop`、既有 `session/fork`、`api/session-controller` 的业务逻辑、`ui-subagent`、`ui-chat`、`ui-sidebar-right` |
 | 默认不修改 | Desktop 启动、Web 启动、全局输入状态机、既有 Session 发送/停止/权限判断 |
 
 首版使用独立可选 patch 验证与启用，不把功能默认塞入 `web-app/cordis.patch.yml`。正常关闭插件后，普通聊天应维持原有能力；已经产生的侧聊保留为可读历史。继续运行依赖已移除 preset 的侧聊应明确报错，不能静默改用标准执行 preset。
 
-如果扩展点验证发现必须修改默认不修改的代码，先补充最小扩展点提案，说明调用者、影响范围和回归证据，再由用户确认。不得为继续推进而复制整个聊天实现、绕过访问控制或导入包内私有 Controller。
+唯一公共 UI 补充是 `ComposerChainProps.projectionValues` 可选参数，由 `ConversationContent` 响应式传递当前 Session 的已有列表投影。原因是问答 Session 冷恢复、直接从左侧打开和自定义 preset 时，输入框必须在快照尚未提交前就识别侧聊，隐藏模型、附件和 preset 选择。该调整已在实施前说明；普通输入插件可以忽略参数。它不修改发送、停止、权限和主任务流程，并有按 Session 隔离的响应式回归测试。
 
 <a id="flow"></a>
 ## 会话与上下文流程
@@ -119,7 +120,7 @@ Host 包拥有服务定义、默认实现和生成的 Remote 类型；Client 通
 
 成功进入日志的首个引用快照是后续上下文依据。模型重试不得重新抓取来源；尚未提交快照就失败时，界面明确显示初始化未完成，用户显式重试可以重新准备，并显示新的实际截取位置。该区别避免把尚未持久化的准备结果宣称为固定快照。
 
-插件应注册可重建的 Session projection，从已有 `user/message` 引用记录判断来源快照是否已提交，并提取其来源位置。重启后依赖该投影判断初始化状态，不依赖进程内布尔值，也不通过自行扫描持久文件恢复消息。P0 已验证最小布尔投影；正式投影仍需覆盖来源身份、截取位置和裁剪信息。
+插件应注册可重建的 Session projection，从已有 `user/message` 引用记录判断来源快照是否已提交，并提取其来源位置。重启后依赖该投影判断初始化状态，不依赖进程内布尔值，也不通过自行扫描持久文件恢复消息。正式投影包含来源身份、截取位置和裁剪信息；快照提交前也能识别问答 Session。
 
 preset 插件在共享的组合代际中激活，Agent 加入相应作用域，不保证每个 Agent 都重新执行一次插件 `apply`。初始化监听器必须根据事件携带的 `agent` 查询关联和投影；不能在共享闭包中保存单一来源身份或“已经初始化”标记，否则不同侧聊会互相污染。
 
@@ -154,7 +155,7 @@ preset 插件在共享的组合代际中激活，Agent 加入相应作用域，�
 
 首版不向主聊天追加关联事件，不改变其模型输入。侧聊关联也不写进 `SessionHeader`，不新增 `SessionEventMap` 判别值。storage-domain 和 projection 的新 schema 仍需按仓库持久类型规则检查和登记，不能把“不改 Session 格式”理解为“不需要持久化审查”。
 
-拟定 Remote 能力只有查询关联和确保侧聊存在，例如 `sideChat.lookup` 与 `sideChat.ensure`；名称和类型必须由服务定义生成。`ensure` 接收来源会话和稳定请求身份，返回同一个目标 Session，不接收伪造的调用者身份，也不替代普通 Session 的发送接口。
+Remote 能力为 `sideChat.lookup` 与 `sideChat.ensure`，类型由服务定义生成。`ensure` 接收来源会话和稳定请求身份，返回同一个目标 Session，不接收伪造的调用者身份，也不替代普通 Session 的发送接口。
 
 创建采用按来源会话串行的单 Host 协调：先持久分配目标身份，再创建同身份 Session，最后提交可用关联。关联阶段写入和 Session 创建之间没有跨存储事务，因此恢复必须分别识别“已分配但未创建”“已创建但关联未完成”“已就绪”。重复请求或多窗口同时请求只能得到同一个目标；多 Host 共同写同一存储不属于首版支持范围。
 
@@ -175,7 +176,7 @@ P0 已验证普通 Session Controller 能冷恢复侧聊并重新装配已记录
 
 头部动作注册到现有 `conversation.session.header.actions`。新标签注册到 `sidebarRightTabs`，其 body 注册到 `sidebar.right.pane.tab`；标签地址只包含恢复所需身份，不包含提示词、快照正文或权限信息。资源 Provider 持有目标 `SessionReference`，通过 `SessionProvider` 建立目标会话作用域，再渲染 `conversation.content` 的 `embedded` 变体及固定 Chat view。
 
-优先复用既有引用上下文的展示，不增加自定义消息渲染器。面板只补充“侧聊”“基于主聊天文本快照”“上下文已裁剪”等必要说明。首版不为了隐藏模型选择、附件按钮或其他共享控件而改公共输入框；不支持的操作必须由问答配置明确拒绝，扩展点验证需检查现有控件是否会造成误导，并在实施前确定局部 Slot 覆盖。
+复用既有引用上下文展示，不增加自定义消息渲染器。面板补充“侧聊”“基于主聊天文本快照”“上下文已裁剪”等说明。侧聊插件通过现有 composer chain 提供局部纯文本输入，不显示模型、附件、preset 选择，不复制共享输入状态机；首问交接和后续发送均复用已有输入动作。隐藏附件会明确提示并阻止发送，斜杠指令会被拒绝且保留草稿。
 
 配置至少明确问答 preset 身份和部署选定的模型策略。上下文预算继续由已有引用服务配置所有，首版不修改全局引用预算默认值；如果必须提供仅侧聊生效的预算，先验证独立 scoped 实例装配，不添加共享服务中的侧聊条件分支。
 
@@ -184,7 +185,7 @@ P0 已验证普通 Session Controller 能冷恢复侧聊并重新装配已记录
 <a id="delivery"></a>
 ## 实施步骤与验收
 
-完整开发前必须确认下节列出的 P0 待定范围，并补足与所选范围相关的验证。当前可以确认插件组合具有实现基础，尚不能确认完整产品已满足验收。
+本次按个人自用范围完成 P1–P4；以下验收表保留预期要求，实际执行结果和限制单独记录，不能将未运行的平台检查视为通过。
 
 | 步骤 | 交付与退出条件 |
 |---|---|
@@ -194,7 +195,7 @@ P0 已验证普通 Session Controller 能冷恢复侧聊并重新装配已记录
 | P3 可选装配 | 独立 patch 可启用功能；缺少依赖明确失败；不启用时主聊天行为不变 |
 | P4 验证与文档 | 完成行为、模型输入、构建和浏览器检查，更新包文档与必要的生成记录 |
 
-P0 的本地证据和未覆盖项见下节。若补充验证依赖新增公共接口，应先提出最小接口方案，不因已有测试通过而扩大修改范围。
+P0 的历史本地证据见下节；正式实现的验证以本次结果为准。
 
 | 验收场景 | 通过标准 |
 |---|---|
@@ -216,10 +217,56 @@ P0 的本地证据和未覆盖项见下节。若补充验证依赖新增公共�
 
 本提案的确认意味着接受插件组合、文本快照范围、每主聊天一个侧聊和 P0 验证要求。它不自动授权提交、推送、部署，也不授权在 P0 失败后扩大公共流程修改范围。
 
+<a id="implementation-results"></a>
+## 本次实现与验证
+
+实现范围和长期行为分别由 [Host README](../../packages/session/side-chat/README.zh.md)、[Client README](../../packages/client/ui-side-chat/README.zh.md) 和[可选装配 README](../../packages/bundle/side-chat/README.zh.md) 所有。本节是 2026-10-20 的审核记录。
+
+### 实现范围
+
+- Host 提供独立 Remote 服务、按来源串行的幂等创建，以及 `allocated / created / ready` 持久化恢复。重复请求沿用同一目标；就绪目标丢失时明确失败，不创建替代品。
+- 问答 Session 为独立根 Agent，固定 provider/model，清除继承的 reasoning effort。scoped 初始化器复用引用服务，只提交首次文本快照；后续追问、模型重试和冷恢复不更新它。无工具限制在装配、模型请求和执行入口校验，缺少初始化器或 preset 时拒绝运行。
+- Client 复用右侧标签、资源 Provider、SessionProvider、内嵌聊天和输入动作。打开空面板不创建 Session；关闭只释放视图引用。首问交接区分 applied、preserved、blocked，保留失败草稿和错误；停止只发送给侧聊目标。
+- 新增 `side_chat` storage-domain v1 和日志派生投影，不修改已有 SessionHeader、事件判别值或格式版本。已有持久类型审查结果为无变化；新 schema 的所有权和恢复行为由 Host 包说明和测试固定。
+- 可选 patch 不进入默认 Web 装配。侧聊登记为 App“插件”列表中的内置可选项；新建 Desktop 配置默认启用，已有配置保留原选择，原生恢复仍能关闭它。唯一共享 UI 补充是前述 composer 投影参数；其余仓库文件用于依赖、编译面、包分类、快照归属和生成目录登记。
+
+侧聊的可选登记包含包内中英文显示元数据和现有通用插件图标。Desktop 默认装配仅写入初次创建的配置，不覆盖已有选择；原生“禁用插件”恢复仍只保留基础 Web 装配。此次补充定向运行 `apps/desktop/tests/project-manager.spec.ts` 和 `scripts/optional-bundles.spec.ts`，75 例通过、1 个 Windows 专属用例在 macOS 跳过。独立 question 初始化入口已登记到发布文件约束，补充的遗漏入口负例回归 1 例通过；workspace constraints、包元数据和定向 lint 均通过。实际插件页确认“侧聊”卡片和启用开关，保存后重启隔离 Host，三个组件均显示运行中；截图为 `/private/tmp/dsh-side-chat-qa-8xihb10c/side-chat-plugin-enabled.jpg`。
+
+### 测试结果
+
+| 实际执行 | 结果与证据范围 |
+|---|---|
+| `./node_modules/.bin/vitest run packages/client/ui-side-chat/tests packages/session/side-chat/tests --reporter=dot` | 7 个文件、57 例通过；覆盖幂等竞争、创建阶段故障、任务隔离、首次快照、重试、冷恢复、权限/状态拒绝、缺失或危险 preset、输入交接和资源释放 |
+| `./node_modules/.bin/vitest run packages/session/side-chat/tests/admission.spec.ts --reporter=dot` | 类型化夹具修正后 3 例通过；属于上述 57 例，不重复计数 |
+| 既有 `packages/client/ui-conversation/tests/skeleton.client.spec.tsx` 定向回归 | 28 例通过；新增参数响应式传递和会话隔离在最后集成审计中再次精确回归通过 |
+| `DSH_EXAMPLE_MODE=lib ./node_modules/.bin/vitest run --config vitest.snapshot.config.ts apps/web/tests/side-chat.snapshot.ts scripts/session-snapshot-corpus.corpus.ts` | 2 个文件、4 例通过：1 个真实 Web 装配模型回放和 3 个快照归属/持久代际检查；只回放本次功能，没有运行其他模型场景 |
+| `pnpm --config.verifyDepsBeforeRun=false run build:artifacts` 后接 `build:check` | 最新生成目录完成后，7 项产物构建和 2 项 Host/Client 聚合检查通过 |
+| 定向 `scripts/run-oxlint.ts` | 三个新包、公共参数改动、Web 回放及登记脚本通过；未运行全仓库 lint |
+| `node --import tsx scripts/persistence-changes.ts --check --json` | 65 个持久类型根与 16 个历史记录一致，`changes: []`；没有用新领域存储伪造 Session 格式升级 |
+| `pnpm --config.verifyDepsBeforeRun=false run doc-sync` | 42 项通过、1 项失败；唯一失败是已确认基线 `python/sdk/uv.lock:113 commit-hash`，文件未修改 |
+
+首次沙箱运行中，tsx IPC 和 Web 本地监听出现 `listen EPERM`；保留错误依据后按仓库要求原命令在宿主重试。构建和 Web 回放的最终结果来自这些成功重试，没有绕过业务断言。未运行全量单元测试、coverage、真实 API 全套 e2e 或平台矩阵。
+
+### 真实模型和浏览器
+
+通过支持的 `dsh web` 启动方式挂载可选 patch，并使用仓库的 `pin-browse-picker.overlay.yml`。验证使用用户已打开的 Chrome，临时独立的数据目录和合成聊天内容；侧聊调用真实 `deepseek-official / deepseek-flash`。主任务使用保持运行直到取消的确定性适配器，因此该检查证明真实侧聊与运行中主任务的隔离，不声称两个真实模型同时生成。
+
+已验证首次真实回答、连续追问、回答过程中关闭与重开、独立停止、390px 明暗主题和输入框/按钮可见性。390px 时页面宽度与 scrollWidth 都为 390，没有横向溢出。完整关闭并重启 Host 后，从主聊天重新打开侧聊，恢复同一目标及历史，并成功完成真实模型追问；持久日志中仍只有一条来源引用，快照仍截至原来的事件 13。
+
+浏览器证据保存在本机临时审核目录 `/private/tmp/dsh-side-chat-qa-8xihb10c/`：`side-chat-stop.jpg` 展示主任务运行而侧聊已停止；`side-chat-390-dark.jpg`、`side-chat-390-light.jpg` 展示窄屏；`side-chat-restarted.jpg` 展示重启后的续聊。测试服务已停止，没有发布。
+
+### 审计与剩余限制
+
+开发由指定 `gpt-6.1-sol / xhigh` 分别负责 Host 和 Client，文件范围互斥，主代理负责装配和集成。指定 `gpt-6-astra / high` 完成独立审计并修复：重复 ensure 绕过缺失初始化器、准备引用前的来源/目标状态校验、固定模型时残留 reasoning effort、隐藏附件发送、首问失败反馈丢失和已释放 Agent 引用残留。修复后完成上述必要回归，最后集成复核未发现剩余 P0–P2 阻塞项。
+
+限制：仅支持单 Host、可信 owner 的个人实例；不提供多用户授权或多 Host 协调。侧聊只有首次主聊天文本快照，不包含完整工具结果、二进制或后续主聊天变化。Web 默认关闭；Desktop 新配置默认启用，已有配置可在“插件”页选择。Electron 原生桌面标题栏与原生目录选择器未运行，本轮浏览器验证不能代替这两项平台验收。文档全量检查的原有 uv.lock 引用问题保留待单独处理。
+
+原工作区已记录文件校验值；共享文件按本次明确范围逐项核对，保留原有未提交内容。未暂存、提交、推送或发布。
+
 <a id="p0-results"></a>
 ## P0 验证结果与审核项
 
-本轮使用真实 Cordis Loader、Agent loop、Session、JSONL 持久化、引用服务和 preset registry 组合；模型通过内存适配器模拟，部分外围服务由仓库既有测试辅助设施提供。本地 P0 探针 `scripts/side-chat-p0.spec.ts` 不随本次文档提交收录，也不注册正式侧聊功能。它不能代替支持的 `dsh` profile、真实模型或浏览器验收。
+以下为开发前的 P0 历史记录，使用真实 Cordis Loader、Agent loop、Session、JSONL 持久化、引用服务和 preset registry，模型为内存适配器。本地已有 `scripts/side-chat-p0.spec.ts` 仍原样保留，不作为本次新增功能代码或最终验收依据。
 
 | 验证内容 | 结果与证据范围 |
 |---|---|
@@ -234,9 +281,9 @@ P0 的本地证据和未覆盖项见下节。若补充验证依赖新增公共�
 | 后台来源授权 | 负例确认脱离 invocation 的 `allows()` 不执行非 owner 检查；当前实现路径不足以承诺共享会话支持 |
 | 现有引用、fork、preset、权限、Factory 和资源引用 | 9 个既有测试文件、183 个用例通过；这些是原机制回归证据，不是新侧聊面板端到端证据 |
 
-新增探针共 9 个用例通过。保留本地探针文件的工作区可用 `pnpm exec vitest run scripts/side-chat-p0.spec.ts` 复现；仅检出本次文档提交不包含该文件。既有回归范围为 `packages/context/session-reference/tests/{session-reference,loader-composition}.spec.ts`、`packages/api/session-controller/tests/{reference-ownership.client,remote-access.host,session-presets.host,session-fork.host}.spec.ts`、`packages/client/ui-subagent/tests/sidebar-chat.client.spec.tsx`、`packages/client/ui-conversation/tests/{apply-wiring,skeleton}.client.spec.tsx`，使用 `pnpm exec vitest run` 执行这些文件。
+此前探针共 9 个用例通过。保留本地探针文件的工作区可用 `pnpm exec vitest run scripts/side-chat-p0.spec.ts` 复现；本轮未重复运行。既有回归范围为 `packages/context/session-reference/tests/{session-reference,loader-composition}.spec.ts`、`packages/api/session-controller/tests/{reference-ownership.client,remote-access.host,session-presets.host,session-fork.host}.spec.ts`、`packages/client/ui-subagent/tests/sidebar-chat.client.spec.tsx`、`packages/client/ui-conversation/tests/{apply-wiring,skeleton}.client.spec.tsx`，使用 `pnpm exec vitest run` 执行这些文件。
 
-以下项目仍需作为后续实施的前置验收，不能从上述测试推断已经通过：
+以下是当时列出的实施验收项，正式结果见本次实现与验证，不能从旧 P0 测试推断：
 
 1. 核对个人自用实例沿用可信 owner 身份；非 owner 和共享会话不纳入本次验收。
 2. 在可选 `dsh` patch 下完成真实装配，验证依赖缺失、模型选择、无工具配置及禁用插件。
@@ -244,7 +291,7 @@ P0 的本地证据和未覆盖项见下节。若补充验证依赖新增公共�
 4. 明确创建方和冷恢复方的 handle 所有权，验证插件运行中卸载、重复释放和主任务隔离。
 5. 在关联协调器实现时验证多窗口竞争和各持久化阶段故障；在正式初始化插件中补充模型请求重试、权限拒绝和模型输入快照。
 
-按个人自用范围推进插件开发，并在实现中补齐上述验收；现有证据不代表完整产品已通过端到端验收。若扩大身份或上下文范围，应先调整方案，再实施。
+非 owner、共享会话和更完整的主模型上下文仍不在本次范围；扩大范围需要另行设计。
 
 <a id="implementation-instructions"></a>
 ## 开发执行要求
@@ -260,4 +307,4 @@ P0 的本地证据和未覆盖项见下节。若补充验证依赖新增公共�
 <a id="dev-note"></a>
 ## 开发备注
 
-本页按用户要求只保留中文版，使用 `side-chat-plugin-plan.md` 作为唯一文件；已删除对应英文内容副本和翻译 sidecar，并在翻译配对清单中仅排除此页。本页不进入产品文档网站。真实模型和浏览器验证尚未执行；功能落地后，行为说明归属新插件 README，本页保留审核范围与 P0 证据。
+本页按用户要求只保留中文版，使用 `side-chat-plugin-plan.md` 作为唯一文件；已删除对应英文内容副本和翻译 sidecar，并在翻译配对清单中仅排除此页。本页不进入产品文档网站。本页记录审核范围、实际验收和 P0 历史证据；配置和行为说明归属三个新插件的 README。

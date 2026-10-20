@@ -22,6 +22,7 @@ This group maps the installable patch layers used by `dsh --profile`. Each packa
 
 | Package | Role | ctx key |
 |---|---|---|
+| [`side-chat`](side-chat/README.md) | Optional independent question sidebar over Web or Desktop | mounts side-chat rows |
 | [`base`](base/README.md) | Shared core for base-backed profiles | — (patch only) |
 | [`acp-app`](acp-app/README.md) | Automation-only ACP stdio application over base | mounts the ACP bridge |
 | [`web-app`](web-app/README.md) | Browser application layer over base | mounts Web rows |

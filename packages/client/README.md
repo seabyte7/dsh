@@ -26,6 +26,7 @@ The kernel packages boot and serve the page; the UI feature packages present it.
 
 | Package | Role | ctx key |
 |---|---|---|
+| [`ui-side-chat/`](ui-side-chat/README.md) | Optional independent question panel in the right sidebar | — |
 | [`web/`](web/README.md) | Boots the browser shell | — |
 | [`modules/`](modules/README.md) | Loads browser-side client modules | `ctx.clientModules` / `ctx.modules` |
 | [`connection/`](connection/README.md) | Maintains browser-host RPC communication and event delivery | `ctx.connection` |

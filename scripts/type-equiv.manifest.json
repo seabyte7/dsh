@@ -2481,6 +2481,36 @@
       "doc": "docs/subsystems/boot.md",
       "symbol": "PendingModule",
       "source": "packages/boot/hmr/src/index.ts"
+    },
+    {
+      "doc": "docs/subsystems/session.md",
+      "symbol": "SideChatRequestId",
+      "source": "packages/session/side-chat/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/session.md",
+      "symbol": "SideChatLookupRequest",
+      "source": "packages/session/side-chat/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/session.md",
+      "symbol": "SideChatEnsureRequest",
+      "source": "packages/session/side-chat/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/session.md",
+      "symbol": "SideChatSnapshot",
+      "source": "packages/session/side-chat/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/session.md",
+      "symbol": "SideChatLookupValue",
+      "source": "packages/session/side-chat/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/session.md",
+      "symbol": "SideChatEnsureValue",
+      "source": "packages/session/side-chat/src/types.ts"
     }
   ]
 }

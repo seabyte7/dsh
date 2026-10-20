@@ -126,12 +126,14 @@ interface ComposerChainProps {
   sessionId: SessionId | undefined
   /** Current Session lifecycle state, absent without a selected Session. */
   session: SessionSnapshot | undefined
+  /** Current list projection values used by pure composer selectors. */
+  projectionValues?: SessionListState['byId'][SessionId]['projectionValues']
   /** Effective business-owned interaction awaiting the user in this Session. */
   pendingInteraction: SessionPendingInteraction | undefined
 }
 ```
 
-业务包仅可在一个 Remote waterfall request pending 期间安装 entry：
+业务包通过这些响应式 owner 值选择 entry。临时 Remote 交互仅在其 waterfall request pending 期间安装 entry：
 
 ```tsx
 import type { ComposerChainProps } from '@deepseek-ai/dsh-client-ui-conversation/client'

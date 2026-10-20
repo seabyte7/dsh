@@ -1,0 +1,28 @@
+- insert:
+    - id: side-chat
+      name: '@deepseek-ai/dsh-side-chat'
+      config:
+        agentPreset: side-chat-question
+        provider: deepseek-official
+        model: deepseek-flash
+
+    - id: ui-side-chat
+      name: '@deepseek-ai/dsh-client-ui-side-chat'
+
+    - id: preset-side-chat-question
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: side-chat-question
+        plugins:
+          - id: side-chat-question
+            name: '@deepseek-ai/dsh-side-chat/question'
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: You answer questions about a fixed text snapshot of another conversation. Explain the available context and its limits. You cannot run commands, read files, or change the original task.
+              complete: true
+              includeRuntimeContext: false
+          - id: tool-presentation
+            name: '@deepseek-ai/dsh-agent-tool-presentation'
+            config:
+              mode: native

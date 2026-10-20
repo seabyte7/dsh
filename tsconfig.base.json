@@ -28,6 +28,11 @@
     // not declaration path aliases, keep each package/vendor source compiled
     // under its own tsconfig boundary.
     "paths": {
+      "@deepseek-ai/dsh-client-ui-side-chat": ["./packages/client/ui-side-chat/src/index.ts"],
+      "@deepseek-ai/dsh-client-ui-side-chat/client": ["./packages/client/ui-side-chat/src/client/index.ts"],
+      "@deepseek-ai/dsh-side-chat-bundle": ["./packages/bundle/side-chat/src/index.ts"],
+      "@deepseek-ai/dsh-side-chat/types": ["./packages/session/side-chat/src/types.ts"],
+      "@deepseek-ai/dsh-side-chat/question": ["./packages/session/side-chat/src/question.ts"],
       "@deepseek-ai/dsh-experimental-session-search": ["./packages/experimental/session-search/src/index.ts"],
       "@deepseek-ai/dsh-experimental-ralph-bundle": ["./packages/experimental/ralph-bundle/src/index.ts"],
       "@deepseek-ai/dsh-experimental-terminal-bundle": ["./packages/experimental/terminal-bundle/src/index.ts"],
@@ -485,6 +490,7 @@
       "@deepseek-ai/dsh-session-turn-outline": ["./packages/session/session-turn-outline/src"],
       "@deepseek-ai/dsh-settings": ["./packages/settings/settings/src"],
       "@deepseek-ai/dsh-shell": ["./packages/shell/shell/src"],
+      "@deepseek-ai/dsh-side-chat": ["./packages/session/side-chat/src"],
       "@deepseek-ai/dsh-skill": ["./packages/skill/skill/src"],
       "@deepseek-ai/dsh-skill-badge": ["./packages/experimental/skill-badge/src"],
       "@deepseek-ai/dsh-skill-filesystem": ["./packages/skill/skill-filesystem/src"],

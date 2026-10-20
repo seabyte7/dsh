@@ -2770,6 +2770,35 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'sideChat',
+    summary: 'One Host owns association writes, creation handles, and admission of restored question Agents.',
+    description: 'One Host owns association writes, creation handles, and admission of restored question Agents.',
+    methods: [
+      {
+        signature: '@Remote({ resources: { session: (request: SideChatLookupRequest) => request.sourceSessionId } }) async lookup(request: SideChatLookupRequest, signal?: AbortSignal): Promise<SideChatLookupValue>',
+        description: 'Find an existing association without creating or resuming an Agent. Missing, archived, migrating, nested, and inaccessible Sessions reject explicitly.',
+        parameters: [{ name: 'request', description: 'source Session identity.' }, { name: 'signal', description: 'optional caller cancellation before reads complete.' }],
+        returns: 'its associated Session and committed snapshot, or an empty object.',
+      },
+      {
+        signature: '@Remote({ resources: { session: (request: SideChatEnsureRequest) => request.sourceSessionId } }) async ensure(request: SideChatEnsureRequest, signal?: AbortSignal): Promise<SideChatEnsureValue>',
+        description: 'Allocate and create the sole question Session for a source. Concurrent and repeated calls reuse the durable target identity; this operation never submits a prompt or replaces a missing ready target.',
+        parameters: [{ name: 'request', description: 'source identity and stable creation request identity.' }, { name: 'signal', description: 'optional caller cancellation before durable allocation; later creation remains Host-owned.' }],
+        returns: 'the same target after Session durability and association commit.',
+      },
+      {
+        signature: 'registerQuestion(scope: Context): void',
+        description: 'Register the scoped question initializer before a preset can create Sessions.',
+        parameters: [{ name: 'scope', description: 'preset-generation context mounting the question entry.' }],
+      },
+      {
+        signature: 'attachQuestion(agent: Agent): void',
+        description: 'Install question admission on an Agent announced inside the question preset. The Agent owns these effects, so restrictions survive preset removal; Controller-restored handles remain Controller-owned.',
+        parameters: [{ name: 'agent', description: 'newly created or restored independent Agent.' }],
+      },
+    ],
+  },
+  {
     key: 'skills',
     summary: 'Layered registry of skill providers, the host+per-scope shape the tools registry established.',
     description: 'Layered registry of skill providers, the host+per-scope shape the tools registry established. A registration files into the layer of its calling context\'s scope (scopeOf): host rows and repository plugins land in the global layer, while a plugin mounted by an agent preset\'s standing composition lands in that preset\'s layer. A read merges the global layer with the viewing scope\'s chain — the nearest layer\'s entry wins a duplicate name outright, and the rank order decides duplicates only within one layer. It exposes sorted invocation-neutral summaries and loads full skill bodies on demand.',
@@ -7624,6 +7653,30 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ShellSandboxInfo',
     declaration: 'export interface ShellSandboxInfo {\n    mode: SandboxMode;\n    denied: boolean;\n    enforcement?: SandboxEnforcement;\n    runnerFailed?: boolean;\n}',
+  },
+  {
+    name: 'SideChatEnsureRequest',
+    declaration: 'export interface SideChatEnsureRequest extends SideChatLookupRequest {\n    readonly requestId: SideChatRequestId;\n}',
+  },
+  {
+    name: 'SideChatEnsureValue',
+    declaration: 'export interface SideChatEnsureValue {\n    readonly sessionId: SessionId;\n}',
+  },
+  {
+    name: 'SideChatLookupRequest',
+    declaration: 'export interface SideChatLookupRequest {\n    readonly sourceSessionId: SessionId;\n}',
+  },
+  {
+    name: 'SideChatLookupValue',
+    declaration: 'export interface SideChatLookupValue {\n    readonly sessionId?: SessionId;\n    readonly snapshot?: SideChatSnapshot;\n}',
+  },
+  {
+    name: 'SideChatRequestId',
+    declaration: 'export type SideChatRequestId = Branded<\'SideChatRequestId\'>;',
+  },
+  {
+    name: 'SideChatSnapshot',
+    declaration: 'export interface SideChatSnapshot {\n    readonly sourceSessionId: SessionId;\n    readonly capturedThroughSeq: OptionalSessionSeq;\n    readonly capturedFormatVersion: number;\n    readonly truncated: boolean;\n    readonly omittedBytes: number;\n    readonly omittedMessages: number;\n}',
   },
   {
     name: 'SignInAttemptId',

@@ -1,0 +1,43 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/bundle/side-chat/README.md
+/:
+  en: f2b00fc831cd24d3
+  zh: 411d9796bbb2cde7
+/deepseek-ai-dsh-side-chat-bundle:
+  en: 29b08e7102638b56
+  zh: 2ad12ba91624515d
+/deepseek-ai-dsh-side-chat-bundle/summary:
+  en: b16dc1c2d1c05b4f
+  zh: e3ed700ef7b84252
+/deepseek-ai-dsh-side-chat-bundle/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 9f0336825ccdaacd
+/deepseek-ai-dsh-side-chat-bundle/use-this-package:
+  en: bbff250eba0f1b89
+  zh: 0a618f05cc88ee2b
+/deepseek-ai-dsh-side-chat-bundle/use-this-package/enable-or-disable-side-chat:
+  en: a5ef34c17f383e56
+  zh: 3691cf2052a3cd6e
+/deepseek-ai-dsh-side-chat-bundle/use-this-package/question-and-model-policy:
+  en: 5e5a4f4b00a5db37
+  zh: ee8b1385722ca438
+/deepseek-ai-dsh-side-chat-bundle/understand-the-implementation:
+  en: 151f972026c60477
+  zh: dac384ec1eb5b397
+/deepseek-ai-dsh-side-chat-bundle/further-exploration:
+  en: 4901b3696dda0dd6
+  zh: dff3762df1dde879
+/deepseek-ai-dsh-side-chat-bundle/model-experience:
+  en: e01b5833ce149211
+  zh: 8cae854973be9f5b
+/deepseek-ai-dsh-side-chat-bundle/model-experience/kv-cache-effect:
+  en: 23f167f3045296e0
+  zh: 494a008aadf9320f
+/deepseek-ai-dsh-side-chat-bundle/known-limitations-and-deferred-work:
+  en: b7aa0e2a5a624afd
+  zh: ced34aa4d56973fa
+/deepseek-ai-dsh-side-chat-bundle/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 8ec3e73528ddb1a6

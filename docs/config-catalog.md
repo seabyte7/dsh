@@ -3060,6 +3060,27 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-shell-env -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-side-chat -->
+<a id="deepseek-aidsh-side-chat"></a>
+
+## `@deepseek-ai/dsh-side-chat`
+
+- `inject`: `agents` · `agentPresets` · `remoteAccess` · `sessions` · `sessionPersistence` · `sessionProjections` · `sessionQuery` · `sessionReferenceResolver` · `storageDomain` · `tools` · `workspaceRegistry`
+- `source`: [`packages/session/side-chat/src/index.ts:28`](../packages/session/side-chat/src/index.ts)
+
+```ts config-catalog
+/** Deployment policy for the question preset and fixed model route. */
+export interface Config {
+  /** Required preset containing this package's question entry and native presentation. */
+  agentPreset: string
+  /** Provider route used by every side-chat model request. */
+  provider: string
+  /** Provider-owned model used by every side-chat model request. */
+  model: string
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-side-chat -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-skill -->
 <a id="deepseek-aidsh-skill"></a>
 
@@ -4638,6 +4659,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 | `@deepseek-ai/dsh-client-ui-settings-subagent` | — | [`packages/client/ui-settings-subagent/src/index.ts`](../packages/client/ui-settings-subagent/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-settings-web-search` | — | [`packages/client/ui-settings-web-search/src/index.ts`](../packages/client/ui-settings-web-search/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-shortcuts` | — | [`packages/client/ui-shortcuts/src/index.ts`](../packages/client/ui-shortcuts/src/index.ts) |
+| `@deepseek-ai/dsh-client-ui-side-chat` | — | [`packages/client/ui-side-chat/src/index.ts`](../packages/client/ui-side-chat/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-sidebar` | — | [`packages/client/ui-sidebar/src/index.ts`](../packages/client/ui-sidebar/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-sidebar-browser` | — | [`packages/client/ui-sidebar-browser/src/index.ts`](../packages/client/ui-sidebar-browser/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-sidebar-files` | — | [`packages/client/ui-sidebar-files/src/index.ts`](../packages/client/ui-sidebar-files/src/index.ts) |
@@ -4787,6 +4809,7 @@ Imported as libraries by other packages; a `cordis.yml` cannot load them.
 | `@deepseek-ai/dsh-session-snapshot` | — | [`packages/test-support/session-snapshot/src/index.ts`](../packages/test-support/session-snapshot/src/index.ts) |
 | `@deepseek-ai/dsh-session-telemetry` | — | [`packages/session/session-telemetry/src/index.ts`](../packages/session/session-telemetry/src/index.ts) |
 | `@deepseek-ai/dsh-session-title-llm` | — | [`packages/session/session-title-llm/src/index.ts`](../packages/session/session-title-llm/src/index.ts) |
+| `@deepseek-ai/dsh-side-chat-bundle` | — | [`packages/bundle/side-chat/src/index.ts`](../packages/bundle/side-chat/src/index.ts) |
 | `@deepseek-ai/dsh-ssh-helper-runtime` | — | [`packages/ssh/ssh-helper-runtime/src/index.ts`](../packages/ssh/ssh-helper-runtime/src/index.ts) |
 | `@deepseek-ai/dsh-timeout` | — | [`packages/util/timeout/src/index.ts`](../packages/util/timeout/src/index.ts) |
 | `@deepseek-ai/dsh-typert-generator` | — | [`packages/typert/generator/src/index.ts`](../packages/typert/generator/src/index.ts) |

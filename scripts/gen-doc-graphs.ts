@@ -108,6 +108,14 @@ const GROUP_ORDER = [
 
 const SERVICE_ROLES: ServiceRole[] = [
   {
+    key: 'sideChat',
+    pkg: 'side-chat',
+    title: 'Independent question Sessions',
+    mode: 'service',
+    consumers: ['client-ui-side-chat'],
+    note: 'Owns one durable question Session per source and initializes its fixed text snapshot without changing the source task.',
+  },
+  {
     key: 'cotTranslation',
     pkg: 'experimental-client-ui-cot-translation',
     title: 'Reasoning translation Remote',

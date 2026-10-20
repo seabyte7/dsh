@@ -1,0 +1,8 @@
+version: 1
+scenario: side-chat
+profile: web
+composition: web-side-chat
+recording: authored
+header:
+  class: web-side-chat
+  pin: true
