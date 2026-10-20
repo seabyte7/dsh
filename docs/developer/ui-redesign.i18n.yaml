@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for ui-redesign.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/developer/ui-redesign.md
+/ui-only-changes:
+  en: 5b91fe08a49640e5
+  zh: b33e558137c03267
+/ui-only-changes/allowed-directories:
+  en: 36b4fb3e33f31a07
+  zh: f5e813ae8c786b35
+/ui-only-changes/excluded-directories-and-logic:
+  en: c186d7c7cc73979b
+  zh: e1d051448e451c4f
+/ui-only-changes/editing-rules:
+  en: 6cc768fe90b1f115
+  zh: 675facb65a9500bc
