@@ -2,8 +2,9 @@
 
 import { execFileSync } from 'node:child_process'
 import { lstatSync, readFileSync, readlinkSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { basename, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { parse, TomlError, type TomlValue } from 'smol-toml'
 import { canonicalReferenceText } from './verify-public-repository-links.ts'
 
 const root = resolve(import.meta.dirname, '..')
@@ -31,12 +32,29 @@ function isMaintained(file: string): boolean {
   return !excludedPrefixes.some(prefix => file.startsWith(prefix))
 }
 
+function isLockfileArtifactSize(file: string, line: string, match: RegExpExecArray): boolean {
+  if (basename(file) !== 'uv.lock' || !/^\d+$/.test(match[0])) return false
+  const prefix = line.slice(0, match.index)
+  if (!/[{,]\s*size\s*=\s*$/.test(prefix)) return false
+  const artifact = `${prefix}"artifact-size"${line.slice(match.index + match[0].length)}`
+    .trim().replace(/,(\s*(?:#.*)?)$/, '$1')
+  let table: TomlValue | undefined
+  try {
+    table = parse(`artifact = ${artifact}`).artifact
+  } catch (error) {
+    // A candidate outside a TOML artifact's numeric size remains a prohibited reference.
+    if (error instanceof TomlError) return false
+    throw error
+  }
+  return typeof table === 'object' && 'size' in table && table.size === 'artifact-size'
+}
+
 /**
  * Inspect a maintained source file against known commit identifiers.
  * @param file - Repository-relative path used in diagnostics and exclusions.
  * @param source - File text or a symlink's stored target.
  * @param commits - Lowercase, unambiguous full or abbreviated commit identifiers.
- * @returns One finding per line and reference kind; digests and other Git object types are accepted.
+ * @returns One finding per line and reference kind; digests, numeric uv artifact sizes, and other Git object types are accepted.
  */
 export function findRepositoryReferences(
   file: string,
@@ -49,7 +67,8 @@ export function findRepositoryReferences(
     if (organizationUrl.test(canonicalReferenceText(line).replace(kitRepositoryUrl, ''))) {
       references.push({ file, line: index + 1, kind: 'organization-url' })
     }
-    if ([...line.matchAll(commitCandidate)].some(match => commits.has(match[0].toLowerCase()))) {
+    if ([...line.matchAll(commitCandidate)].some(match =>
+      commits.has(match[0].toLowerCase()) && !isLockfileArtifactSize(file, line, match))) {
       references.push({ file, line: index + 1, kind: 'commit-hash' })
     }
   }

@@ -106,6 +106,40 @@ describe('maintained repository reference policy', () => {
     ])
   })
 
+  it('accepts numeric uv lockfile artifact sizes while rejecting commit references in other fields and comments', () => {
+    const identifier = String(12_345_678)
+    const commits = new Set([identifier])
+    const artifact = `{ url = "https://example.invalid/package.whl", size = ${identifier} },`
+    expect(findRepositoryReferences('python/sdk/uv.lock', artifact, commits)).toEqual([])
+    expect(findRepositoryReferences('uv.lock', artifact, commits)).toEqual([])
+    expect(findRepositoryReferences('python/sdk/uv.lock', `${artifact} # wheel`, commits)).toEqual([])
+
+    for (const source of [
+      `{ git = "${identifier}", size = 1 },`,
+      `{ url = "https://example.invalid/${identifier}", size = ${identifier} },`,
+      `{ url = "https://example.invalid/package.whl", size = "${identifier}" },`,
+      `{ note = ', size = ${identifier},', size = 1 },`,
+      `{ size = ${identifier},`,
+      `{ url = "https://example.invalid/package.whl", size = ${identifier} }, # ${identifier}`,
+      `# ${artifact}`,
+    ]) {
+      expect(findRepositoryReferences('python/sdk/uv.lock', source, commits))
+        .toEqual([{ file: 'python/sdk/uv.lock', line: 1, kind: 'commit-hash' }])
+    }
+    expect(findRepositoryReferences('source.md', artifact, commits))
+      .toEqual([{ file: 'source.md', line: 1, kind: 'commit-hash' }])
+    expect(findRepositoryReferences('python/sdk/uv.lock', `${artifact}\n${identifier}`, commits))
+      .toEqual([{ file: 'python/sdk/uv.lock', line: 2, kind: 'commit-hash' }])
+  })
+
+  it('rejects available repository commits recorded in uv lockfiles', (test) => {
+    const fixture = repository(test)
+    fixture.write('python/sdk/uv.lock', `source = { git = "https://example.invalid/package?rev=${fixture.commit}" }\n`)
+    expect(scanRepositoryReferences(fixture.root)).toEqual([
+      { file: 'python/sdk/uv.lock', line: 1, kind: 'commit-hash' },
+    ])
+  })
+
   it('does not fetch missing commits from a partial clone\'s promisor remote', (test) => {
     const remote = repository(test)
     remote.git(['config', 'uploadpack.allowFilter', 'true'])
