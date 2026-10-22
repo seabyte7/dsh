@@ -30,6 +30,12 @@
     },
     {
       "path": "../../packages/credentials/deepseek-account"
+    },
+    {
+      "path": "../../packages/client/desktop-completions"
+    },
+    {
+      "path": "../../packages/core/session"
     }
   ]
 }

@@ -10,7 +10,7 @@ kind: "package-reference"
 
 使用本包可通过标准 Slot 钩子公开 Session catalog、retain 信息与统一 UI 状态。它按 `SessionBinding` 物化钩子和 prop，而 `SessionProvider` 可以继承外围 binding 或绑定显式 `SessionReference`。它拥有进程本地的 pending-interaction 与完成提醒策略，但不拥有 Controller transport、历史或 reference。
 
-运行状态来自 Host 列表基线或状态事件。Subagent 目录行和已保留子会话的 fallback 行不会建立运行状态；主视图引用仍会确认完成提醒。
+运行状态来自 Host 列表基线或状态事件。Subagent 目录行和已保留子会话的 fallback 行不会建立运行状态。默认由主视图引用确认完成提醒；注册的平台完成状态源拥有自己的未读集合和确认策略，例如 [macOS Desktop](../desktop-completions/README.zh.md)。
 
 ## 目录
 

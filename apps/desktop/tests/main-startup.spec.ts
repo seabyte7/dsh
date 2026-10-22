@@ -12,6 +12,8 @@ import { DesktopHostFatalError, DesktopHostUncleanExitError } from '../src/host-
 import { en, zh } from '../src/locale.ts'
 import { DesktopUpdatePreparationError } from '../src/update-error.ts'
 import { writeCrashReport } from '../src/crash-report.ts'
+import type { DesktopCompletionChange } from '@deepseek-ai/dsh-client-desktop-completions/types'
+import { SessionId, SessionSeq } from '@deepseek-ai/dsh-session/types'
 
 type InvokeEvent = { sender?: unknown; senderFrame: { url: string } }
 type InvokeHandler = (event: InvokeEvent, ...args: unknown[]) => unknown
@@ -148,6 +150,8 @@ const harness = await vi.hoisted(async () => {
       readonly inspectPort?: number, readonly environment?: NodeJS.ProcessEnv, readonly onFailure?: (error: Error) => void,
       readonly primaryRuntime?: string,
       readonly packageManager?: { pnpm: string; nodeBin: string },
+      readonly onPlatformSession?: (value: unknown) => void,
+      readonly onCompletion?: (change: DesktopCompletionChange) => void,
     ) { hosts.push(this) }
   }
   const app = Object.assign(new EventEmitter(), {
@@ -161,6 +165,7 @@ const harness = await vi.hoisted(async () => {
     setAppLogsPath: vi.fn(),
     getPath: vi.fn<(name: string) => string>(),
     setAboutPanelOptions: vi.fn<(options: Electron.AboutPanelOptionsOptions) => void>(),
+    dock: { setBadge: vi.fn() },
     requestSingleInstanceLock: () => true,
     setAsDefaultProtocolClient: vi.fn(),
     exit: vi.fn(),
@@ -443,6 +448,27 @@ afterEach(async () => {
 })
 
 describe('desktop main startup', () => {
+  it('routes macOS Host completions through owned unread IPC and native visibility', async () => {
+    vi.stubGlobal('process', { ...process, platform: 'darwin', arch: 'arm64' })
+    const host = await readyForUpdate()
+    const window = harness.windows[0]!
+    const position = { sessionId: SessionId('first'), seq: SessionSeq(4) }
+    window.visible = false
+    invoke(DESKTOP_IPC.completionsViewed, 'app', position)
+    host.onCompletion?.({ kind: 'completed', ...position })
+    expect(harness.app.dock.setBadge).toHaveBeenLastCalledWith('1')
+    expect(invoke(DESKTOP_IPC.completionsStatus, 'app')).toMatchObject({ unread: [position] })
+    expect(() => invoke(DESKTOP_IPC.completionsStatus, 'shell')).toThrow('Rejected Platform command')
+    expect(() => invoke(DESKTOP_IPC.completionsViewed, 'app', { ...position, seq: -1 })).toThrow('invalid viewed position')
+    window.visible = true
+    window.emit('focus')
+    expect(harness.app.dock.setBadge).toHaveBeenLastCalledWith('')
+    host.onCompletion?.({ kind: 'completed', sessionId: SessionId('second'), seq: SessionSeq(8) })
+    expect(harness.app.dock.setBadge).toHaveBeenLastCalledWith('1')
+    harness.app.emit('will-quit')
+    expect(harness.app.dock.setBadge).toHaveBeenLastCalledWith('')
+  })
+
   it.each([true, false])('selects the package manager before Host startup (packaged=%s)', async (packaged) => {
     harness.app.isPackaged = packaged
     await readyForUpdate()

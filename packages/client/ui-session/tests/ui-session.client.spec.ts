@@ -194,6 +194,31 @@ afterEach(async () => {
 })
 
 describe('UiSession bindings', () => {
+  it('uses one platform unread source until its registration is released', () => {
+    const ctx = new Context()
+    const bench = createSessionsBench(ctx)
+    const id = sessionId('native-unread')
+    bench.binding(id)
+    const service = createUiSession(ctx, bench)
+    bench.setMainView(id, 1)
+    const unread = createSnapshotStore<ReadonlySet<SessionId>>(new Set([id]))
+    const dispose = service.registerCompletionSource(unread)
+    expect(service.sessionStatus.getSnapshot().get(id)?.completionUnread).toBe(true)
+    bench.emitStatus(id, true)
+    bench.emitStatus(id, false)
+    expect(service.sessionStatus.getSnapshot().get(id)?.completionUnread).toBe(true)
+    expect(() => service.registerCompletionSource(unread)).toThrow('already registered')
+    unread.set(new Set())
+    expect(service.sessionStatus.getSnapshot().get(id)?.completionUnread).toBe(false)
+    dispose()
+    bench.setMainView(id, 0)
+    bench.emitStatus(id, true)
+    bench.emitStatus(id, false)
+    expect(service.sessionStatus.getSnapshot().get(id)?.completionUnread).toBe(true)
+    unread.set(new Set([sessionId('orphan')]))
+    expect(service.sessionStatus.getSnapshot().has(sessionId('orphan'))).toBe(false)
+  })
+
   it('tracks the main-view source and moves its retention watcher between Sessions', () => {
     const ctx = new Context()
     const bench = createSessionsBench(ctx)

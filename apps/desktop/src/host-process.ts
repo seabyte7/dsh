@@ -3,6 +3,7 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { join } from 'node:path'
 import type { PlatformSession } from '@deepseek-ai/dsh-deepseek-account'
+import type { DesktopCompletionChange } from '@deepseek-ai/dsh-client-desktop-completions/types'
 import { desktopNodeEnvironment } from './node-environment.ts'
 
 interface ReadyEvent {
@@ -23,18 +24,20 @@ interface PlatformSessionEvent {
   readonly session: PlatformSession | null
 }
 
-type DesktopHostEvent = ReadyEvent | FatalEvent | PlatformSessionEvent | { readonly type: 'shutdown-complete' } | {
-  readonly type: 'update-tasks'
-  readonly requestId: number
-  readonly active: boolean
-  readonly error?: string
-} | {
-  readonly type: 'quit-inspection'
-  readonly requestId: number
-  readonly activeTasks: boolean
-  readonly scheduledTasks: boolean
-  readonly error?: string
-}
+type DesktopHostEvent = ReadyEvent | FatalEvent | PlatformSessionEvent
+  | { readonly type: 'completion'; readonly change: DesktopCompletionChange }
+  | { readonly type: 'shutdown-complete' } | {
+    readonly type: 'update-tasks'
+    readonly requestId: number
+    readonly active: boolean
+    readonly error?: string
+  } | {
+    readonly type: 'quit-inspection'
+    readonly requestId: number
+    readonly activeTasks: boolean
+    readonly scheduledTasks: boolean
+    readonly error?: string
+  }
 
 /** Correlated answer to one shell control request. */
 type DesktopHostControlResponse = Extract<DesktopHostEvent, { readonly requestId: number }>
@@ -54,6 +57,14 @@ function isDesktopHostEvent(message: unknown): message is DesktopHostEvent {
   if (typeof message !== 'object' || message === null || !('type' in message)) return false
   const candidate = message as Record<string, unknown>
   switch (candidate.type) {
+    case 'completion': {
+      const change = candidate.change
+      if (typeof change !== 'object' || change === null || !('sessionId' in change)
+        || typeof change.sessionId !== 'string' || change.sessionId.length === 0 || !('kind' in change)) return false
+      return change.kind === 'started' || change.kind === 'removed'
+        || (change.kind === 'completed' && 'seq' in change && Number.isSafeInteger(change.seq)
+          && typeof change.seq === 'number' && change.seq >= 0)
+    }
     case 'shutdown-complete':
       return true
     case 'ready':
@@ -165,6 +176,7 @@ export class DesktopHostProcess {
    *   `office-skills` resources fail Host startup.
    * @param packageManager - Bundled pnpm entry and Node launcher directory, scoped to package operations.
    * @param onPlatformSession - Private credential updates for embedded Platform views.
+   * @param onCompletion - Live top-level turn changes for the shell-owned unread badge, when supplied.
    */
   constructor(
     private readonly node: string,
@@ -177,6 +189,7 @@ export class DesktopHostProcess {
     private readonly packageManager?: { readonly pnpm: string; readonly nodeBin: string },
 
     private readonly onPlatformSession?: (session: PlatformSession | null) => void,
+    private readonly onCompletion?: (change: DesktopCompletionChange) => void,
   ) {}
 
   /**
@@ -211,6 +224,7 @@ export class DesktopHostProcess {
       }
       if (message.type === 'ready') this.readyResolve({ url: message.url, injections: message.injections })
       else if (message.type === 'platform-session') this.onPlatformSession?.(message.session)
+      else if (message.type === 'completion') { if (!this.stopping) this.onCompletion?.(message.change) }
       else if (message.type === 'shutdown-complete') {
         if (this.stopping) this.shutdownCompleted = true
         else this.fail(new Error('dsh desktop host acknowledged an unrequested shutdown'))

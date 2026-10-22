@@ -44,6 +44,7 @@ import { WELCOME_IPC, needsWelcome, type WelcomeNotice } from './welcome-api.ts'
 import { connectDesktopWelcome, type DesktopWelcomeBackend } from './welcome-backend.ts'
 import { DesktopUpdateJournal } from './update-journal.ts'
 import { DesktopUpdatePreparationError } from './update-error.ts'
+import { DesktopTaskAttention, isDesktopCompletionView } from './task-attention.ts'
 import { DesktopUpdateSchedule, resolveDesktopUpdateScheduleConfig } from './update-schedule.ts'
 import { desktopUpdateErrorSummary, presentDesktopUpdate } from './update-presentation.ts'
 import { desktopErrorState } from './startup-error.ts'
@@ -442,12 +443,22 @@ async function main(): Promise<void> {
   }
   const platformView = new DesktopPlatformView(join(app.getAppPath(), 'lib', 'preload-platform-account.cjs'),
     () => locale.id === 'zh-CN' ? 'zh_CN' : 'en_US', process.platform === 'win32' ? 'win32' : 'darwin')
+  const taskAttention = process.platform === 'darwin' ? new DesktopTaskAttention(
+    text => app.dock?.setBadge(text),
+    (snapshot) => {
+      if (mainWindow !== undefined && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send(DESKTOP_IPC.completionsChanged, snapshot)
+      }
+    },
+  ) : undefined
+  app.once('will-quit', () => { taskAttention?.dispose() })
   const backend = new DesktopBackendController((onFailure) => {
+    taskAttention?.reset()
     const hostInspectPort = developmentHostInspectPort(development)
     const host = new DesktopHostProcess(resources.node, resources.dsh, activeProject,
       hostInspectPort, { ...hostEnvironment, DSH_CLIENT_VERSION: desktopClientVersion() }, onFailure,
       primaryRuntime,
-      resources, (next) => { platformView.setSession(next) })
+      resources, (next) => { platformView.setSession(next) }, change => taskAttention?.observe(change))
     return {
       start: async () => {
         const ready = await host.start()
@@ -731,6 +742,16 @@ async function main(): Promise<void> {
       || !event.senderFrame.url.startsWith('dsh-app://app/')) throw new Error('Rejected Platform command')
     return owner
   }
+  ipcMain.handle(DESKTOP_IPC.completionsStatus, (event) => {
+    assertMainApplication(event)
+    if (taskAttention === undefined) throw new Error('desktop completions: unavailable on this platform')
+    return taskAttention.status()
+  })
+  ipcMain.handle(DESKTOP_IPC.completionsViewed, (event, view: unknown) => {
+    assertMainApplication(event)
+    if (taskAttention === undefined || !isDesktopCompletionView(view)) throw new Error('desktop completions: invalid viewed position')
+    taskAttention.viewed(view)
+  })
   ipcMain.on(PLATFORM_IPC.bootstrap, (event) => {
     try { event.returnValue = platformView.bootstrap(event) }
     catch { event.returnValue = null }
@@ -1072,6 +1093,7 @@ async function main(): Promise<void> {
   const createMainWindow = (): BrowserWindow => {
     const window = createWindow(appPreload, false, true)
     mainWindow = window
+    taskAttention?.bind(window)
     browserGuests.bind(window, (guest, name) => shortcuts.attachGuest(window, guest, name))
     shortcuts.attach(window)
     window.on('focus', automaticCheck)

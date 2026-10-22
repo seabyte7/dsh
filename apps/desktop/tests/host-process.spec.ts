@@ -73,6 +73,30 @@ afterEach(async () => {
 })
 
 describe('desktop host process', () => {
+  it('carries live completion positions over private IPC', async () => {
+    const runtime = projectWithHost(HTTP_HOST.replace("process.send({ type: 'ready',",
+      "process.send({ type: 'completion', change: { kind: 'completed', sessionId: 'first', seq: 4 } })\n  process.send({ type: 'ready',"))
+    const completed = vi.fn()
+    const host = new DesktopHostProcess(process.execPath, runtime, runtime, undefined, process.env,
+      undefined, undefined, undefined, undefined, completed)
+    hosts.push(host)
+    await host.start()
+    expect(completed).toHaveBeenCalledExactlyOnceWith({ kind: 'completed', sessionId: 'first', seq: 4 })
+  })
+
+  it.each([
+    { kind: 'completed', sessionId: 'first', seq: -1 },
+    { kind: 'completed', sessionId: 'first', seq: '4' },
+    { kind: 'completed', sessionId: '', seq: 4 },
+    { kind: 'unexpected', sessionId: 'first' },
+    null,
+  ])('rejects malformed completion IPC: %j', async (change) => {
+    const runtime = projectWithHost(HTTP_HOST.replace("process.send({ type: 'ready',",
+      `process.send({ type: 'completion', change: ${JSON.stringify(change)} })\n  process.send({ type: 'ready',`))
+    const host = hostProcess(runtime)
+    await expect(host.start()).rejects.toThrow('invalid IPC event')
+  })
+
   it('correlates task inspections and admission changes over private IPC', async () => {
     const host = hostProcess(projectWithHost())
     await expect(host.updateTasks('inspect')).rejects.toThrow('Host is unavailable')

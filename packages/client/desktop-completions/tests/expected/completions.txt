@@ -1,0 +1,3 @@
+background: badge=2, first=unread, second=unread
+foreground first: badge=1, first=read, second=unread
+foreground second: badge=empty, first=read, second=read

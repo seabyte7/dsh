@@ -38,6 +38,10 @@
     - button "查看 开发者工具": 开发者工具
     - text: 实验性 查看调试会话原始数据、聊天消息分组数据，以及调试 NodeJS 后端
     - switch "启用 开发者工具"
+  - listitem:
+    - button "查看 侧聊": 侧聊
+    - text: 主任务继续执行时，基于固定文本快照独立问答。
+    - switch "启用 侧聊"
 - heading "已安装插件" [level=3]
 - list:
   - listitem:

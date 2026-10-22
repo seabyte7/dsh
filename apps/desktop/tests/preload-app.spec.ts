@@ -57,6 +57,33 @@ it('limits product documents to update status and a native confirmation action',
   expect(electron.ipcRenderer.off).toHaveBeenCalledWith(DESKTOP_IPC.updatesPresentation, handler)
 })
 
+it('exposes macOS completion snapshots and loaded positions through owned IPC', async () => {
+  vi.stubGlobal('location', new URL('dsh-app://app/'))
+  vi.stubGlobal('process', { ...process, platform: 'darwin', isMainFrame: true })
+  await import('../src/preload-app.ts')
+  const api = electron.contextBridge.exposeInMainWorld.mock.calls.find(([name]) => name === 'dshDesktop')?.[1] as DshDesktopProductApi
+  const bridge = api.completions!
+  await bridge.status()
+  await bridge.viewed(null)
+  expect(electron.ipcRenderer.invoke.mock.calls).toEqual([[DESKTOP_IPC.completionsStatus], [DESKTOP_IPC.completionsViewed, null]])
+  const listener = vi.fn()
+  const dispose = bridge.subscribe(listener)
+  const handler = electron.ipcRenderer.on.mock.calls.find(([channel]) => channel === DESKTOP_IPC.completionsChanged)![1] as
+    (event: unknown, snapshot: unknown) => void
+  handler({}, { revision: 1, unread: [] })
+  expect(listener).toHaveBeenCalledWith({ revision: 1, unread: [] })
+  dispose()
+  expect(electron.ipcRenderer.off).toHaveBeenCalledWith(DESKTOP_IPC.completionsChanged, handler)
+})
+
+it('omits the completion bridge on other desktop platforms', async () => {
+  vi.stubGlobal('location', new URL('dsh-app://app/'))
+  vi.stubGlobal('process', { ...process, platform: 'win32', isMainFrame: true })
+  await import('../src/preload-app.ts')
+  const api = electron.contextBridge.exposeInMainWorld.mock.calls.find(([name]) => name === 'dshDesktop')?.[1] as DshDesktopProductApi
+  expect(api.completions).toBeUndefined()
+})
+
 it.each(['dsh-app://shell/plugin-manager.html', 'dsh-app://other/index.html', 'https://shell/startup.html', 'http://example.com/'])('exposes only the carrier marker to %s', async (url) => {
   vi.stubGlobal('location', new URL(url))
   await import('../src/preload-app.ts')

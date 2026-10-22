@@ -9,10 +9,21 @@ import { syncNativeTheme } from './preload-theme.ts'
 import { syncWindowsAppearance } from './preload-windows.ts'
 import { installMandatoryUpdateOverlay } from './preload-mandatory-overlay.ts'
 import { createDesktopBrowserBridge } from './preload-browser.ts'
+import type { DesktopCompletionSnapshot, DesktopCompletionView } from '@deepseek-ai/dsh-client-desktop-completions/types'
 
 function createProductApi(): DshDesktopProductApi {
   return {
     protocolVersion: 1,
+    ...(process.platform === 'darwin' ? { completions: {
+      status: () => ipcRenderer.invoke(DESKTOP_IPC.completionsStatus) as Promise<DesktopCompletionSnapshot>,
+      viewed: (view: DesktopCompletionView) =>
+        ipcRenderer.invoke(DESKTOP_IPC.completionsViewed, view) as Promise<void>,
+      subscribe(listener: (snapshot: DesktopCompletionSnapshot) => void) {
+        const handle = (_event: Electron.IpcRendererEvent, snapshot: DesktopCompletionSnapshot): void => { listener(snapshot) }
+        ipcRenderer.on(DESKTOP_IPC.completionsChanged, handle)
+        return () => { ipcRenderer.off(DESKTOP_IPC.completionsChanged, handle) }
+      },
+    } } : {}),
     browser: createDesktopBrowserBridge(),
     deviceInfo: () => ipcRenderer.invoke(DESKTOP_IPC.deviceInfo) as Promise<string>,
     keyboard: {
