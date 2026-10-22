@@ -1,5 +1,6 @@
 /** Independent, owner-only question Sessions with durable same-identity allocation. */
 import { randomUUID } from 'node:crypto'
+import { brandString } from '@deepseek-ai/dsh-brand'
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent, AgentHandle } from '@deepseek-ai/dsh-agent'
@@ -17,7 +18,7 @@ import { Remote, RemoteError, TypertRemoteService, remoteErrorOf } from '@deepse
 import type {} from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-workspace'
 import { sideChatProjection } from './projection.ts'
-import { sideChatDomain, type SideChatAssociation } from './storage.ts'
+import { sideChatDomain, type SideChatAssociation, type SideChatAssociationKey } from './storage.ts'
 import type {
   SideChatEnsureRequest, SideChatEnsureValue, SideChatLookupRequest, SideChatLookupValue, SideChatSnapshot,
 } from './types.ts'
@@ -55,7 +56,7 @@ export class SideChat extends TypertRemoteService {
 
   private readonly owner: Context
   private domain?: Domain<typeof sideChatDomain>
-  private associations?: KvTable<SessionId, SideChatAssociation>
+  private associations?: KvTable<SideChatAssociationKey, SideChatAssociation>
   private readonly chains = new Map<SessionId, Promise<void>>()
   private readonly handles = new Set<AgentHandle>()
   private readonly questions = new Set<Agent>()
@@ -115,7 +116,7 @@ export class SideChat extends TypertRemoteService {
     return this.track(async () => {
       await this.sourceHeader(request.sourceSessionId)
       signal?.throwIfAborted()
-      const record = this.table().get(request.sourceSessionId)
+      const { record } = this.association(request)
       if (record === undefined) return {}
       this.assertResource(record.sessionId)
       const target = await this.header(record.sessionId)
@@ -129,8 +130,8 @@ export class SideChat extends TypertRemoteService {
   }
 
   /**
-   * Allocate and create the sole question Session for a source. Concurrent and repeated calls reuse
-   * the durable target identity; this operation never submits a prompt or replaces a missing ready target.
+   * Allocate a question Session for one source and stable request id. Repeated calls reuse that target;
+   * a different id starts an independent history. No prompt is submitted or missing ready target replaced.
    * @param request - source identity and stable creation request identity.
    * @param signal - optional caller cancellation before durable allocation; later creation remains Host-owned.
    * @returns the same target after Session durability and association commit.
@@ -145,14 +146,16 @@ export class SideChat extends TypertRemoteService {
       const source = await this.sourceHeader(request.sourceSessionId)
       await this.preset()
       signal?.throwIfAborted()
-      let record = this.table().get(source.id)
+      const allocation = this.association(request)
+      const key = allocation.key
+      let record = allocation.record
       if (record === undefined) {
         if (source.cwd === undefined) this.fail('association', source.id)
         record = {
           sourceSessionId: source.id, sessionId: SessionId(randomUUID()), requestId: request.requestId,
           agentPreset: this.config.agentPreset, cwd: source.cwd, phase: 'allocated',
         }
-        await this.table().put(source.id, record)
+        await this.table().put(key, record)
       }
       this.assertOpen()
       this.assertResource(record.sessionId)
@@ -193,8 +196,8 @@ export class SideChat extends TypertRemoteService {
       this.assertOpen()
       if (record.phase === 'ready') return { sessionId: record.sessionId }
       record = { ...record, phase: 'created' }
-      await this.table().put(source.id, record)
-      await this.table().put(source.id, { ...record, phase: 'ready' })
+      await this.table().put(key, record)
+      await this.table().put(key, { ...record, phase: 'ready' })
       return { sessionId: record.sessionId }
     }))
   }
@@ -354,10 +357,26 @@ export class SideChat extends TypertRemoteService {
     return observation.projections?.values.sideChat?.snapshot ?? undefined
   }
 
-  private table(): KvTable<SessionId, SideChatAssociation> {
+  private table(): KvTable<SideChatAssociationKey, SideChatAssociation> {
     this.assertOpen()
     if (this.associations === undefined) throw new Error('side-chat domain is not initialized')
     return this.associations
+  }
+
+  private association(request: SideChatLookupRequest): { key: SideChatAssociationKey; record?: SideChatAssociation } {
+    const legacyKey = brandString<SideChatAssociationKey>(request.sourceSessionId)
+    const legacy = this.table().get(legacyKey)
+    if (request.requestId !== undefined && request.requestId.trim() === '') this.fail('input', request.sourceSessionId)
+    let key = request.requestId === undefined ? legacyKey
+      : brandString<SideChatAssociationKey>(JSON.stringify([request.sourceSessionId, request.requestId]))
+    let record = this.table().get(key)
+    if (record === undefined && (legacy === undefined || request.requestId === undefined || legacy.requestId === request.requestId)) {
+      key = legacyKey
+      record = legacy
+    }
+    if (record !== undefined && (record.sourceSessionId !== request.sourceSessionId
+      || (request.requestId !== undefined && record.requestId !== request.requestId))) this.fail('association', request.sourceSessionId)
+    return { key, ...record === undefined ? {} : { record } }
   }
 
   private recordForTarget(sessionId: SessionId): SideChatAssociation | undefined {

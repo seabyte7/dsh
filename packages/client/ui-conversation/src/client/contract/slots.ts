@@ -299,6 +299,24 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   }
 
   interface SlotFactoryMap {
+    /** Shared input editor, submission policy, and optional full-chat controls. */
+    'conversation.input': {
+      scope: 'session-maybe'
+      props: ComposerBarOwnerProps
+      locale: 'conversation'
+      inject: ComposerBarInjected
+      children: {
+        'conversation.input.attachments': { kind: 'single'; scope: 'session-maybe' }
+        'conversation.input.overlay': { kind: 'list'; scope: 'session' }
+        'conversation.input.permission': { kind: 'single'; scope: 'session' }
+        'conversation.input.left': { kind: 'list'; scope: 'session' }
+        'conversation.input.plan': { kind: 'single'; scope: 'session' }
+        'conversation.input.right': { kind: 'list'; scope: 'session' }
+        'conversation.input.model': { kind: 'single'; scope: 'session' }
+        'conversation.input.activity': { kind: 'single'; scope: 'session' }
+        'conversation.composer.dock': { kind: 'list'; scope: 'session' }
+      }
+    }
     /** Reusable Conversation content instantiated by presentation hosts. */
     'conversation.content': {
       scope: 'session-maybe'
@@ -401,12 +419,18 @@ export interface ConvViewOwnerProps {
 /** Base props of one target-owned Conversation View entry. */
 export type ConvViewProps = PropsRuntime<'conversation.view'>
 
+/** Feature-owned selection of text-only input from the current Session projections. */
+export type ComposerInputPolicy = (projections: SessionListState['byId'][SessionId]['projectionValues'] | undefined) => boolean
+
 /** Business callbacks injected into the resident Conversation shell. */
 export interface ConversationInjected {
   /** Connect and open a blank Session in the selected Workspace. */
   selectWorkspace: (workspaceId: WorkspaceId) => Promise<void>
   /** Session-addressed composer block source, or the stable absent source. */
-  hooks: { composerBlock: ObservableSnapshot<ComposerBlock | undefined> }
+  hooks: {
+    composerBlock: ObservableSnapshot<ComposerBlock | undefined>
+    inputPolicies: ObservableSnapshot<readonly ComposerInputPolicy[]>
+  }
 }
 
 /** Business callbacks injected into the strict Session body. */
@@ -434,6 +458,17 @@ export interface ConversationSessionHeaderInjected {
 
 /** Owner share of the resident composer bar. */
 export interface ComposerBarOwnerProps {
+  /** Show text editing and submission without commands, attachments, or model controls. */
+  textOnly?: boolean
+  /** Visible validation that blocks submission while leaving the draft editable. */
+  submissionBlocked?: string
+  /** Feature-owned draft before a target Session exists; no Session is created while editing. */
+  pendingDraft?: {
+    readonly text: string
+    readonly sending: boolean
+    readonly onChange: (text: string) => void
+    readonly onSubmit: () => void
+  }
   /** Hero uses centered placement; composer uses the active bottom placement. */
   variant: 'hero' | 'composer'
   /** A feature-owned reason that makes message input inert while leaving model selection live. */
@@ -495,17 +530,7 @@ export interface InputActivityOwnerProps extends InputControlOwnerProps {
 }
 
 /** Full props of the resident composer bar. */
-export type ComposerBarProps =
-  PropsRuntime<'conversation.composer.bar'>
-  & PropsRenderSlots<
-    | 'conversation.input.attachments' | 'conversation.input.overlay'
-    | 'conversation.input.permission'
-    | 'conversation.input.left' | 'conversation.input.plan'
-    | 'conversation.input.right' | 'conversation.input.model' | 'conversation.input.activity'
-    | 'conversation.composer.dock'
-  >
-  & InjectFace<ComposerBarInjected>
-  & PropsLocale<'conversation'>
+export type ComposerBarProps = FactoryComponentPropsOf<'conversation.input'>
 
 /** Owner values used to elect a composer takeover. */
 export interface ComposerChainProps {
@@ -535,6 +560,8 @@ export type ConversationSlotProps =
 
 /** Inputs shared by main and embedded Conversation content occurrences. */
 export interface ConversationContentInputProps {
+  /** Input presentation shared by main and embedded hosts. */
+  input?: Pick<ComposerBarOwnerProps, 'textOnly' | 'placeholder'>
   variant: 'main' | 'embedded'
   phase: 'settling' | 'hero' | 'active'
   hero: boolean

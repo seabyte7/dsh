@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Ask independent questions about one conversation while its main task continues. The first accepted question adds a bounded text reference snapshot to a separate ordinary Session; follow-ups reuse that committed context. Each source has one durable target, and concurrent creation requests recover the same identity. The configured question preset has no tools and uses a fixed model route. This feature serves the trusted owner of a personal installation.
+Ask independent questions about one conversation while its main task continues. The first accepted question adds a bounded text reference snapshot to a separate ordinary Session; follow-ups reuse that committed context. Each stable creation id has one durable target; a new id starts another history for the same source. The configured question preset has no tools and uses a fixed model route. This feature serves the trusted owner of a personal installation.
 
 ## Table of Contents
 
@@ -49,7 +49,7 @@ The question entry belongs inside the preset. A missing initializer or a final A
 
 ### Association and first input
 
-Opening a panel uses `sideChat.lookup` and creates nothing. `sideChat.ensure` receives a branded source Session id and a stable branded request id, then returns the same independent target for repeated requests. It never submits a prompt. The Client sends questions and stops responses through the existing target Session APIs. Caller cancellation before allocation stops admission; once allocation is durable, creation remains Host-owned.
+Opening a panel uses `sideChat.lookup` with its source and stable `requestId`, creating nothing. `sideChat.ensure` returns the same target for retries of that pair; a different id creates an independent history. Source-only lookup retains the legacy association and never selects the latest chat. It never submits a prompt. The Client sends questions and stops responses through the existing target Session APIs. Caller cancellation before allocation stops admission; once allocation is durable, creation remains Host-owned.
 
 The first direct text question prepares the source through `session-reference` at its actual pre-step cut. A canonical mention of that same source reuses the existing preparation. Source and target lifecycle checks precede reference resolution; other Session references and non-text attachments reject before source preparation. After the first reference commits, later questions cannot refresh it with another canonical mention. The `sideChat` projection exposes `{ snapshot: null }` before initialization and snapshot metadata afterward; ordinary Sessions expose `null`.
 
@@ -69,7 +69,7 @@ Closing a panel releases Client view resources. Disabling the Host first closes 
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-The `side_chat` storage domain records source and target identities, the creation request, the preset, the working directory, and `allocated` / `created` / `ready` phases. The source-keyed Host coordinator persists an allocation before creating that exact Session, flushes Session state, and commits readiness afterward. Recovery can adopt a matching Session created before its phase write; it cannot allocate a replacement for a missing committed target. This coordination supports one writing Host.
+The `side_chat` storage domain records source and target identities, the creation request, the preset, the working directory, and `allocated` / `created` / `ready` phases. The source-serialized Host coordinator persists an allocation before creating that exact Session, flushes Session state, and commits readiness afterward. The first allocation retains the legacy source key; later chats use source-and-request keys in the same validated table. Record fields and existing keys remain readable. Recovery can adopt a matching Session created before its phase write; it cannot allocate a replacement for a missing committed target. This coordination supports one writing Host.
 
 The scoped initializer registers its preset generation with the Host. Each associated Agent receives its own admission listeners, an inherited-tool restriction, and a monotonic executor guard. A global creation listener also rejects mapped cold targets whose preset lost the initializer. Snapshot metadata folds from the existing committed `user/message` reference source, so restoration uses projection reads rather than private persistence-file scans.
 

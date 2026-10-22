@@ -6,11 +6,10 @@ import { Button, StateDot, Tooltip, IconNewChatOutlineRegular } from '@deepseek-
 import type {
   InjectFace, PropsLocale, PropsRenderFactories, PropsRenderSlots, PropsRuntime, PropsStore,
 } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-side-chat/types'
 import type { NS } from './locales.ts'
 import type { createSideChatStore } from './store.ts'
-import { parseSideChatAddress } from './address.ts'
+import { parseSideChatAddress, newSideChatAddress } from './address.ts'
 import { failureMessage } from './errors.ts'
 import css from './SideChat.module.css'
 
@@ -48,13 +47,13 @@ export type SideChatActions = PropsStore<SideChatStore>['actions']
 
 /** First-question handoff and explicit association read actions. */
 export interface PanelInjected {
-  send: (source: SessionId, text: string, requestId: string | undefined) => void
-  refresh: (source: SessionId) => void
+  send: (address: string, text: string, requestId: string | undefined) => void
+  refresh: (address: string) => void
 }
 
 /** Sidebar-owned data, draft store, target scope, and actions. */
 export type SideChatPanelProps = PropsRuntime<'sidebar.right.pane.tab'>
-  & PropsRenderSlots<'sidechat.conversation'> & PropsStore<SideChatStore>
+  & PropsRenderSlots<'sidechat.conversation'> & PropsRenderFactories & PropsStore<SideChatStore>
   & PropsLocale<typeof NS> & InjectFace<PanelInjected>
 
 /**
@@ -63,16 +62,19 @@ export type SideChatPanelProps = PropsRuntime<'sidebar.right.pane.tab'>
  * @returns the side-chat panel with retained history beside read failures.
  */
 export function SideChatPanel({
-  useTabInfo, useResource, useStore, actions, send, refresh, SessionProvider, renderSlot, t,
+  useTabInfo, useResource, useStore, actions, send, refresh, SessionProvider, renderSlot, renderFactorySlot, t,
 }: SideChatPanelProps) {
   const { tab } = useTabInfo()
-  const source = parseSideChatAddress(tab.contentId)
-  const draft = useStore(state => source === undefined ? undefined : state.drafts[source])
+  const address = tab.contentId
+  const source = parseSideChatAddress(address)
+  const draft = useStore(state => source === undefined ? undefined : state.drafts[address])
   const resource = useResource<'sidechat'>(tab.contentId)
-  const reference = resource.value?.reference
-  const loading = resource.status === 'loading'
-  const unavailable = resource.status === 'none'
-  const failed = resource.status === 'failed'
+  const stale = resource.value !== undefined && (resource.value.sourceSessionId !== source?.sourceSessionId
+    || resource.value.requestId !== source.requestId)
+  const reference = stale ? undefined : resource.value?.reference
+  const loading = stale || resource.status === 'loading'
+  const unavailable = !stale && resource.status === 'none'
+  const failed = !stale && resource.status === 'failed'
   const showDraft = reference === undefined || (draft?.text ?? '') !== ''
   const command = (draft?.text.trimStart() ?? '').startsWith('/')
   return (
@@ -81,37 +83,32 @@ export function SideChatPanel({
         <div role="alert" className={css.notice}>
           <span>{resource.failure !== undefined ? t('failed', { reason: failureMessage(resource.failure, t) }) : t('unavailable')}</span>
           {source !== undefined && !unavailable && (
-            <Button size="sm" onClick={() => { refresh(source) }}>{t('retry')}</Button>
+            <Button size="sm" onClick={() => { refresh(address) }}>{t('retry')}</Button>
           )}
         </div>
       )}
       {draft?.error !== undefined && <p role="alert" className={css.notice}>{draft.error}</p>}
       {loading && <div className={css.loading} role="status" aria-label={t('loading')}><StateDot state="ongoing" /></div>}
       {source !== undefined && showDraft && !loading && (
-        <form className={css.empty} onSubmit={(event) => {
-          event.preventDefault()
-          if (!command && !draft?.sending && !failed && !unavailable && (draft?.text.trim() ?? '') !== '') {
-            send(source, draft?.text ?? '', draft?.requestId)
-          }
-        }}>
+        <div className={css.empty}>
           {reference === undefined && <p>{t('empty')}</p>}
           <p className={css.context}>{t('snapshot.pending')}</p>
           {command && <p role="alert" className={css.context}>{t('slashUnsupported')}</p>}
-          <label className={css.label} htmlFor={`side-chat-question-${tab.id}`}>{t('question')}</label>
-          <textarea
-            id={`side-chat-question-${tab.id}`}
-            className={css.input}
-            value={draft?.text ?? ''}
-            placeholder={t('placeholder')}
-            disabled={draft?.sending || failed || unavailable}
-            onChange={(event) => { actions.setDraft(source, event.target.value) }}
-          />
-          <div className={css.actions}>
-            <Button variant="primary" type="submit" aria-label={t('send')} disabled={command || draft?.sending || failed || unavailable || (draft?.text.trim() ?? '') === ''}>
-              {draft?.sending ? <StateDot state="ongoing" /> : t('send')}
-            </Button>
-          </div>
-        </form>
+          <SessionProvider key={address} session={undefined} children={null} empty={() => renderFactorySlot('conversation.input', {
+            variant: 'composer', textOnly: true, placeholder: t('placeholder'),
+            disabled: failed || unavailable,
+            ...(command ? { submissionBlocked: t('slashUnsupported') } : {}),
+            pendingDraft: {
+              text: draft?.text ?? '', sending: draft?.sending ?? false,
+              onChange: (text) => { actions.setDraft(address, text) },
+              onSubmit: () => {
+                if (!command && !draft?.sending && !failed && !unavailable && (draft?.text.trim() ?? '') !== '') {
+                  send(address, draft?.text ?? '', draft?.requestId)
+                }
+              },
+            },
+          })} />
+        </div>
       )}
       {reference !== undefined && (
         <SessionProvider session={reference}>
@@ -153,72 +150,13 @@ export function SideChatConversation({
           : t('snapshot.ready', { seq: snapshot.capturedThroughSeq })}
         {snapshot?.truncated === true && <span>{t('snapshot.cropped')}</span>}
       </p>
+      {session.lastAgentError !== null && <p className={css.notice} role="alert">{t('sendFailed', { reason: session.lastAgentError })}</p>}
       {renderFactorySlot('conversation.content', {
         variant: 'embedded',
         phase: session.openState === 'loading' ? 'settling' : 'active',
-        hero: false,
+        hero: false, input: { textOnly: true, placeholder: t('placeholder') },
       }, { slots: { views: FixedChatView } })}
     </div>
-  )
-}
-
-/** Target-scoped Stop action. */
-export interface ComposerInjected {
-  stop: () => void
-}
-
-/** Standard input and Session shares for the elected question composer. */
-export type SideChatComposerProps = PropsRuntime<'conversation.composer'> & PropsLocale<typeof NS>
-  & { matched: { sideChat: true } } & InjectFace<ComposerInjected>
-
-/**
- * Submit text questions through the existing Session input actions.
- * @param props - bound input, access, archive state, and Stop action.
- * @returns the text-only question composer with visible failure and read-only reasons.
- */
-export function SideChatComposer({
-  sessionId, useInput, inputActions, useSession, useAccess, useWorkspaces, stop, t,
-}: SideChatComposerProps) {
-  const input = useInput(value => value)
-  const session = useSession(value => value)
-  const canPrompt = useAccess('session/prompt')
-  const canStop = useAccess('session/cancel')
-  const archived = useWorkspaces(value => value.archivedSessionIds.includes(sessionId))
-  const readonly = !canPrompt || archived || session.removed || session.openState !== 'open'
-  const busy = input.phase === 'adjudicating' || input.phase === 'submitting'
-  const command = input.draft.trimStart().startsWith('/') || input.claim !== undefined
-  const attachments = input.attachmentIds.length > 0
-  const error = session.promptError?.error.message ?? session.openError?.message ?? session.lastAgentError
-  return (
-    <form className={css.composer} onSubmit={(event) => {
-      event.preventDefault()
-      if (!command && !attachments && !readonly && !busy && input.draft.trim() !== '') inputActions.submit()
-    }}>
-      {error != null && <p className={css.notice} role="alert">{t('sendFailed', { reason: error })}</p>}
-      {readonly && error == null && <p className={css.context}>{t('readonly')}</p>}
-      {command && <p className={css.context} role="alert">{t('slashUnsupported')}</p>}
-      {attachments && (
-        <div className={css.notice} role="alert">
-          <span>{t('attachmentsUnsupported')}</span>
-          <Button size="sm" disabled={busy} onClick={() => {
-            for (const id of input.attachmentIds) inputActions.removeAttachment(id)
-          }}>{t('removeAttachments')}</Button>
-        </div>
-      )}
-      <label className={css.label} htmlFor={`side-chat-followup-${sessionId}`}>{t('question')}</label>
-      <textarea
-        id={`side-chat-followup-${sessionId}`}
-        className={css.input}
-        value={input.draft}
-        placeholder={t('placeholder')}
-        disabled={readonly || busy}
-        onChange={(event) => { inputActions.setDraft(event.target.value) }}
-      />
-      <div className={css.actions}>
-        {session.running && <Button size="sm" onClick={stop} disabled={!canStop}>{t('stop')}</Button>}
-        <Button type="submit" variant="primary" size="sm" disabled={command || attachments || readonly || busy || input.draft.trim() === ''}>{t('send')}</Button>
-      </div>
-    </form>
   )
 }
 
@@ -232,4 +170,21 @@ export type SideChatTitleProps = PropsRuntime<'sidebar.right.pane.tab.title'> & 
  */
 export function SideChatTitle({ t }: SideChatTitleProps) {
   return <span className={css.tabTitle}><IconNewChatOutlineRegular /><span>{t('title')}</span></span>
+}
+
+/**
+ * Open the source-bound side chat from the Sidebar guide's own pane.
+ * @param props - source identity, guide labels, and occurrence-bound actions.
+ * @returns the side-chat guide capsule.
+ */
+export function SideChatGuide({ sessionId, title, description, useTabInfo, useProjection }: PropsRuntime<'sidebar.right.tab.guide.entry'>) {
+  const { tab } = useTabInfo()
+  const snapshot = useProjection('sideChat')
+  if (snapshot !== null) return null
+  return <Button variant="ghost" className={css.guide} aria-label={description === undefined ? title : `${title} ${description}`} onClick={() => {
+    tab.actions.openResource(newSideChatAddress(sessionId), { replaceTab: true })
+  }}>
+    <IconNewChatOutlineRegular />
+    <span><span>{title}</span>{description !== undefined && <span className={css.context}>{description}</span>}</span>
+  </Button>
 }

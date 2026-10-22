@@ -4,27 +4,67 @@ import { cleanup, fireEvent, render } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SessionReference, SessionSnapshot } from '@deepseek-ai/dsh-api-session-controller/client'
 import { makeTranslate, sessionSnapshot } from '@deepseek-ai/dsh-client-test-runtime'
-import type { DraftAttachmentId, InputActions, InputState } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { ComposerBarOwnerProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { ResourceSnapshot } from '@deepseek-ai/dsh-client-resources/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { SideChatRequestId } from '@deepseek-ai/dsh-side-chat/types'
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 import type { SideChatResource } from '../src/client/resources.ts'
 import {
-  FixedChatView, HeaderAction, SideChatComposer, SideChatConversation, SideChatPanel,
-  type HeaderActionProps, type SideChatComposerProps, type SideChatConversationProps, type SideChatPanelProps,
+  FixedChatView, HeaderAction, SideChatGuide, SideChatConversation, SideChatPanel,
+  type HeaderActionProps, type SideChatConversationProps, type SideChatPanelProps,
 } from '../src/client/Panel.tsx'
 import { en, zh } from '../src/client/locales.ts'
-import { sideChatAddress } from '../src/client/address.ts'
+import { sideChatAddress, parseSideChatAddress } from '../src/client/address.ts'
 import { createSideChatStore } from '../src/client/store.ts'
 import type {} from '../src/client/index.ts'
 
 const SOURCE = 'source' as SessionId
 const TARGET = 'target' as SessionId
+const ADDRESS = sideChatAddress(SOURCE)
 const t = makeTranslate(en)
 
 afterEach(cleanup)
 
+function factoryInput(props: SideChatPanelProps): ComposerBarOwnerProps {
+  const call = vi.mocked(props.renderFactorySlot).mock.calls.findLast(([name]) => name === 'conversation.input')
+  return call![1] as ComposerBarOwnerProps
+}
+
 describe('side-chat panel', () => {
+  it('clears old history, failure, and draft when a new side chat opens on the same source', () => {
+    const oldAddress = sideChatAddress(SOURCE, 'old' as SideChatRequestId)
+    const freshAddress = sideChatAddress(SOURCE, 'fresh' as SideChatRequestId)
+    const store = createSideChatStore().create()
+    store.actions.setDraft(oldAddress, 'OLD_DRAFT')
+    store.actions.failed(oldAddress, 'OLD_FAILURE')
+    let address = oldAddress
+    let resource: ResourceSnapshot<SideChatResource> = {
+      status: 'live', value: { ...parseSideChatAddress(oldAddress)!, reference: { sessionId: TARGET } as SessionReference },
+      failure: undefined,
+    }
+    const renderSlot = vi.fn(() => <p>OLD_HISTORY</p>)
+    const renderFactorySlot = vi.fn(() => null)
+    const props = {
+      t, useTabInfo: () => ({ tab: { id: 'same-seat', contentId: address } }),
+      useResource: () => resource,
+      useStore: (select: (state: ReturnType<typeof store.getSnapshot>) => unknown) => select(store.getSnapshot()),
+      actions: store.actions, send: vi.fn(), refresh: vi.fn(), renderSlot, renderFactorySlot,
+      SessionProvider: ({ children, empty }: { children?: ReactNode; empty?: () => ReactNode }) => <>{empty?.() ?? children}</>,
+    } as SideChatPanelProps
+    const view = render(<SideChatPanel {...props} />)
+    expect(view.getByText('OLD_HISTORY')).toBeTruthy()
+    address = freshAddress
+    view.rerender(<SideChatPanel {...props} />)
+    expect(view.queryByText('OLD_HISTORY')).toBeNull()
+    expect(view.queryByText('OLD_FAILURE')).toBeNull()
+    resource = { status: 'live', value: parseSideChatAddress(freshAddress)!, failure: undefined }
+    view.rerender(<SideChatPanel {...props} />)
+    expect(factoryInput(props).pendingDraft?.text).toBe('')
+    expect(store.getSnapshot().drafts[oldAddress]?.text).toBe('OLD_DRAFT')
+    expect(store.getSnapshot().drafts[freshAddress]).toBeUndefined()
+  })
+
   it('opens the empty view without sending and retains a typed question in the declared store', () => {
     const store = createSideChatStore().create()
     const send = vi.fn()
@@ -36,36 +76,36 @@ describe('side-chat panel', () => {
       actions: store.actions,
       send,
       refresh: vi.fn(),
-      renderSlot: vi.fn(),
-      SessionProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+      renderSlot: vi.fn(), renderFactorySlot: vi.fn(() => null),
+      SessionProvider: ({ empty }: { empty?: () => ReactNode }) => <>{empty?.()}</>,
     } as SideChatPanelProps
     const view = render(<SideChatPanel {...props} />)
     expect(send).not.toHaveBeenCalled()
-    fireEvent.change(view.getByRole('textbox'), { target: { value: 'Why?' } })
+    factoryInput(props).pendingDraft!.onChange('Why?')
     view.rerender(<SideChatPanel {...props} />)
-    expect(store.getSnapshot().drafts[SOURCE]?.text).toBe('Why?')
-    fireEvent.click(view.getByRole('button', { name: 'Send' }))
-    expect(send).toHaveBeenCalledWith(SOURCE, 'Why?', undefined)
+    expect(store.getSnapshot().drafts[ADDRESS]?.text).toBe('Why?')
+    factoryInput(props).pendingDraft!.onSubmit()
+    expect(send).toHaveBeenCalledWith(ADDRESS, 'Why?', undefined)
   })
 
   it('keeps slash-prefixed questions as a visible validation error without calling send', () => {
     const store = createSideChatStore().create()
-    store.actions.setDraft(SOURCE, '  /fork')
+    store.actions.setDraft(ADDRESS, '  /fork')
     const send = vi.fn()
     const props = {
       t,
       useTabInfo: () => ({ tab: { id: 'tab', contentId: sideChatAddress(SOURCE) } }),
       useResource: () => ({ status: 'live', value: { sourceSessionId: SOURCE }, failure: undefined }),
       useStore: (select: (state: ReturnType<typeof store.getSnapshot>) => unknown) => select(store.getSnapshot()),
-      actions: store.actions, send, refresh: vi.fn(), renderSlot: vi.fn(),
-      SessionProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+      actions: store.actions, send, refresh: vi.fn(), renderSlot: vi.fn(), renderFactorySlot: vi.fn(() => null),
+      SessionProvider: ({ empty }: { empty?: () => ReactNode }) => <>{empty?.()}</>,
     } as SideChatPanelProps
     const view = render(<SideChatPanel {...props} />)
     expect(view.getByRole('alert').textContent).toContain('does not support slash commands')
-    expect((view.getByRole('button', { name: 'Send' }) as HTMLButtonElement).disabled).toBe(true)
-    fireEvent.submit(view.getByRole('textbox').closest('form')!)
+    expect(factoryInput(props).submissionBlocked).toContain('does not support slash commands')
+    factoryInput(props).pendingDraft!.onSubmit()
     expect(send).not.toHaveBeenCalled()
-    expect(store.getSnapshot().drafts[SOURCE]?.text).toBe('  /fork')
+    expect(store.getSnapshot().drafts[ADDRESS]?.text).toBe('  /fork')
   })
 
   it('binds the target reference and keeps stale history beside a load failure', () => {
@@ -106,7 +146,7 @@ describe('side-chat embedded Conversation', () => {
     expect(view.getByRole('status').textContent).toContain('through event 34')
     expect(view.getByRole('status').textContent).toContain('Context was cropped')
     expect(renderFactorySlot).toHaveBeenCalledWith('conversation.content', {
-      variant: 'embedded', phase: 'active', hero: false,
+      variant: 'embedded', phase: 'active', hero: false, input: { textOnly: true, placeholder: 'Ask about the main chat…' },
     }, { slots: { views: FixedChatView } })
   })
 
@@ -118,80 +158,32 @@ describe('side-chat embedded Conversation', () => {
   })
 })
 
-function composerFixture(options: { draft?: string; archived?: boolean; running?: boolean; attachmentIds?: DraftAttachmentId[] } = {}) {
-  const submit = vi.fn()
-  const stop = vi.fn()
-  const setDraft = vi.fn()
-  const removeAttachment = vi.fn()
-  const input: InputState = {
-    draft: options.draft ?? 'Follow up', attachmentIds: options.attachmentIds ?? [], draftRev: 1,
-    phase: 'plain', occurrences: [], queue: [],
-  }
+
+
+it('opens side chat in the guide occurrence with its own source identity', () => {
+  const openResource = vi.fn()
+  const view = render(<SideChatGuide {...({
+    sessionId: SOURCE, title: 'Side chat', description: 'Ask about this chat',
+    useTabInfo: () => ({ tab: { actions: { openResource } } }),
+    useProjection: () => null,
+  } as Parameters<typeof SideChatGuide>[0])} />)
+  fireEvent.click(view.getByRole('button', { name: 'Side chat Ask about this chat' }))
+  expect(openResource).toHaveBeenCalledWith(expect.any(String), { replaceTab: true })
+  const first = openResource.mock.calls[0]![0] as string
+  expect(parseSideChatAddress(first)?.sourceSessionId).toBe(SOURCE)
+  expect(parseSideChatAddress(first)?.requestId).toBeTruthy()
+  fireEvent.click(view.getByRole('button', { name: 'Side chat Ask about this chat' }))
+  expect(openResource.mock.calls[1]![0]).not.toBe(first)
+})
+
+it('does not offer a nested side chat while the source projection is absent or already a side chat', () => {
   const props = {
-    t, sessionId: TARGET,
-    matched: { sideChat: true },
-    useInput: (select: (value: InputState) => unknown) => select(input),
-    useSession: (select: (value: SessionSnapshot) => unknown) => select({
-      ...sessionSnapshot(TARGET), running: options.running ?? false, openState: 'open',
-    }),
-    useAccess: () => true,
-    useWorkspaces: (select: (value: { archivedSessionIds: SessionId[] }) => unknown) => (
-      select({ archivedSessionIds: options.archived ? [TARGET] : [] })
-    ),
-    inputActions: {
-      submit, setDraft, removeAttachment,
-      captureInsertion: () => ({ start: 0, end: 0, draftRev: 1 }),
-      insertText: () => false,
-      persistDraft: () => {},
-      addAttachments: () => false,
-      pruneAttachments: () => {},
-    } satisfies InputActions,
-    stop,
-  } as SideChatComposerProps
-  return { props, submit, stop, setDraft, removeAttachment }
-}
-
-describe('side-chat composer', () => {
-  it('uses the bound ordinary input actions and independent Stop callback', () => {
-    const f = composerFixture({ running: true })
-    const view = render(<SideChatComposer {...f.props} />)
-    fireEvent.change(view.getByRole('textbox'), { target: { value: 'Another question' } })
-    expect(f.setDraft).toHaveBeenCalledWith('Another question')
-    fireEvent.click(view.getByRole('button', { name: 'Send' }))
-    expect(f.submit).toHaveBeenCalledOnce()
-    fireEvent.click(view.getByRole('button', { name: 'Stop side chat' }))
-    expect(f.stop).toHaveBeenCalledOnce()
-    expect(view.queryByText('Attach')).toBeNull()
-  })
-
-  it.each(['/fork', '  /compact'])('does not execute slash command %s', (draft) => {
-    const f = composerFixture({ draft })
-    const view = render(<SideChatComposer {...f.props} />)
-    fireEvent.submit(view.getByRole('textbox').closest('form')!)
-    expect(f.submit).not.toHaveBeenCalled()
-    expect(view.getByRole('alert').textContent).toContain('does not support slash commands')
-  })
-
-  it('keeps unsupported attachments visible and removes them only on an explicit action', () => {
-    const attachments = ['image-draft', 'file-draft'] as DraftAttachmentId[]
-    const f = composerFixture({ attachmentIds: attachments })
-    const view = render(<SideChatComposer {...f.props} />)
-    expect(view.getByRole('alert').textContent).toContain('Remove existing attachments')
-    fireEvent.submit(view.getByRole('textbox').closest('form')!)
-    expect(f.submit).not.toHaveBeenCalled()
-    expect(f.removeAttachment).not.toHaveBeenCalled()
-    expect((view.getByRole('textbox') as HTMLTextAreaElement).value).toBe('Follow up')
-    fireEvent.click(view.getByRole('button', { name: 'Remove attachments' }))
-    expect(f.removeAttachment.mock.calls).toEqual(attachments.map(id => [id]))
-  })
-
-  it('disables input for archived targets while preserving the question', () => {
-    const f = composerFixture({ archived: true })
-    const view = render(<SideChatComposer {...f.props} />)
-    expect((view.getByRole('textbox') as HTMLTextAreaElement).disabled).toBe(true)
-    expect((view.getByRole('textbox') as HTMLTextAreaElement).value).toBe('Follow up')
-    expect(view.getByText('This side chat is currently read-only')).toBeTruthy()
-    fireEvent.submit(view.getByRole('textbox').closest('form')!)
-    expect(f.submit).not.toHaveBeenCalled()
-  })
+    sessionId: TARGET, title: 'Side chat',
+    useTabInfo: () => ({ tab: { actions: { openResource: vi.fn() } } }),
+    useProjection: () => ({ snapshot: null }),
+  } as Parameters<typeof SideChatGuide>[0]
+  const view = render(<SideChatGuide {...props} />)
+  expect(view.queryByRole('button')).toBeNull()
+  view.rerender(<SideChatGuide {...props} useProjection={() => undefined} />)
+  expect(view.queryByRole('button')).toBeNull()
 })

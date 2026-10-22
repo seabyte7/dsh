@@ -816,14 +816,15 @@ interface PluginRecord {
 ## `SideChat` 请求与快照类型
 
 ```ts type-equiv
-/** Stable identity of one ensure operation, retained across uncertain responses. */
+/** Stable side-chat identity, retained across creation retries and view restoration. */
 type SideChatRequestId = Branded<'SideChatRequestId'>
 ```
 
 ```ts type-equiv
-/** Source conversation whose one associated question Session is addressed. */
+/** Source conversation and optional side-chat identity; omission addresses its legacy association. */
 interface SideChatLookupRequest {
   readonly sourceSessionId: SessionId
+  readonly requestId?: SideChatRequestId
 }
 ```
 
@@ -855,7 +856,7 @@ interface SideChatLookupValue {
 ```
 
 ```ts type-equiv
-/** The sole target assigned to the source, including on repeated requests. */
+/** The target assigned to this side-chat identity, including on repeated requests. */
 interface SideChatEnsureValue {
   readonly sessionId: SessionId
 }
@@ -1212,8 +1213,8 @@ One Host owns association writes, creation handles, and admission of restored qu
 @Remote({ resources: { session: (request: SideChatLookupRequest) => request.sourceSessionId } }) async lookup(request: SideChatLookupRequest, signal?: AbortSignal): Promise<SideChatLookupValue>
 
 /**
- * Allocate and create the sole question Session for a source. Concurrent and repeated calls reuse
- * the durable target identity; this operation never submits a prompt or replaces a missing ready target.
+ * Allocate a question Session for one source and stable request id. Repeated calls reuse that target;
+ * a different id starts an independent history. No prompt is submitted or missing ready target replaced.
  * @param request - source identity and stable creation request identity.
  * @param signal - optional caller cancellation before durable allocation; later creation remains Host-owned.
  * @returns the same target after Session durability and association commit.

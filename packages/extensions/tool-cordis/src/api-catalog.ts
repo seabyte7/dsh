@@ -2782,7 +2782,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: '@Remote({ resources: { session: (request: SideChatEnsureRequest) => request.sourceSessionId } }) async ensure(request: SideChatEnsureRequest, signal?: AbortSignal): Promise<SideChatEnsureValue>',
-        description: 'Allocate and create the sole question Session for a source. Concurrent and repeated calls reuse the durable target identity; this operation never submits a prompt or replaces a missing ready target.',
+        description: 'Allocate a question Session for one source and stable request id. Repeated calls reuse that target; a different id starts an independent history. No prompt is submitted or missing ready target replaced.',
         parameters: [{ name: 'request', description: 'source identity and stable creation request identity.' }, { name: 'signal', description: 'optional caller cancellation before durable allocation; later creation remains Host-owned.' }],
         returns: 'the same target after Session durability and association commit.',
       },
@@ -7664,7 +7664,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SideChatLookupRequest',
-    declaration: 'export interface SideChatLookupRequest {\n    readonly sourceSessionId: SessionId;\n}',
+    declaration: 'export interface SideChatLookupRequest {\n    readonly sourceSessionId: SessionId;\n    readonly requestId?: SideChatRequestId;\n}',
   },
   {
     name: 'SideChatLookupValue',

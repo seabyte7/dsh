@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Ask questions in the right sidebar while the original task continues. This optional layer adds one independent question conversation per source conversation. It uses a fixed text snapshot and a tool-free preset. New Desktop profiles enable it by default; Web profiles leave it switched off. The layer requires the existing Web services and the trusted owner identity.
+Ask questions in the right sidebar while the original task continues. This optional layer opens independent question conversations for each source. It uses a fixed text snapshot and a tool-free preset. New Desktop profiles enable it by default; Web profiles leave it switched off. The layer requires the existing Web services and the trusted owner identity.
 
 ## Table of Contents
 
@@ -37,7 +37,7 @@ The patch adds the Host service, its Client adapter, the sidebar UI, and the `si
 
 ### Question and model policy
 
-Open **Side chat** from a conversation header. Opening the empty panel creates no Session. Submit the first question to create the associated Session and capture source text. Follow-up questions use that committed snapshot. Closing the panel releases the view; its answer continues.
+Open **Side chat** from the header or Sidebar guide to start a fresh empty chat. Opening creates no Session. Submit the first question to create the associated Session and capture source text. Follow-up questions use that committed snapshot. Closing the panel releases the view; its answer continues.
 
 The `side-chat` row explicitly selects `deepseek-official` / `deepseek-flash`. A later patch can replace its complete config with `agentPreset`, `provider`, and `model`; a custom preset must retain the question initializer and native presentation, with no tools. The existing reference service owns the context budget.
 

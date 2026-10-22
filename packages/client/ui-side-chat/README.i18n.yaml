@@ -3,23 +3,23 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/client/ui-side-chat/README.md
 /:
-  en: 49eca1955dafceea
-  zh: bce0f74493a51827
+  en: 99fbe344adb8206a
+  zh: 0ae7d97bf3a95ed2
 /deepseek-ai-dsh-client-ui-side-chat:
   en: cb2ad5f02177002c
   zh: c6367efda33ddbe6
 /deepseek-ai-dsh-client-ui-side-chat/summary:
-  en: 47c03eca252e750f
-  zh: c5bffef2dcf49afe
+  en: 2029635e90d91ba1
+  zh: a81cd6cf4a46523d
 /deepseek-ai-dsh-client-ui-side-chat/table-of-contents:
   en: d152484eb41ac6b4
   zh: 82bbd1ae631975a1
 /deepseek-ai-dsh-client-ui-side-chat/use-this-package:
-  en: 91ab8ee9cd6300bc
-  zh: 030202c27a6c817f
+  en: 6d54dc851f4761db
+  zh: 6d3072157432c273
 /deepseek-ai-dsh-client-ui-side-chat/understand-the-implementation:
-  en: 7d38f7c8edb89f79
-  zh: a8c63d22d18715ba
+  en: f7f1a6db0498ef77
+  zh: 6c32d81b21e10513
 /deepseek-ai-dsh-client-ui-side-chat/further-exploration:
   en: fe1e4e14282dea12
   zh: 50156868c379c81c
@@ -30,8 +30,8 @@
   en: bbd8e8fbf040142a
   zh: fa559802f5af7f92
 /deepseek-ai-dsh-client-ui-side-chat/known-limitations-and-deferred-work:
-  en: 1b0b665aeee66de0
-  zh: f19241fb046f3329
+  en: db3471a901e1d7b7
+  zh: f7abb0740ecec4a9
 /deepseek-ai-dsh-client-ui-side-chat/known-limitations-and-deferred-work/dev-note:
   en: e67f633dc6fe7773
   zh: e88aeb617ffb74ea

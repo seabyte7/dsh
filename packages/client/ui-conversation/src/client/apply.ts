@@ -19,7 +19,7 @@ import { sessionReferenceRule } from './user-text/session-reference-rule.ts'
 import { collapseWhitespaceRule, trimWhitespaceRule } from './user-text/whitespace-rules.ts'
 import type { ViewTab } from './contract/views.ts'
 import type {
-  ComposerBarInjected, ConversationInjected, ConversationSessionHeaderInjected,
+  ComposerBarInjected, ComposerInputPolicy, ConversationInjected, ConversationSessionHeaderInjected,
   ConversationSessionInjected, DraftFileUploads, UserTextInjected,
 } from './contract/slots.ts'
 import type { InputNotice } from './contract/input.ts'
@@ -41,7 +41,7 @@ import { ConversationContent } from './skeleton/ConversationContent.tsx'
 import { ConversationPanel } from './skeleton/ConversationPanel.tsx'
 import { ConversationHeader } from './skeleton/ConversationHeader.tsx'
 import { ConversationSession, ConversationSessionHeader } from './skeleton/ConversationSession.tsx'
-import { InputBar } from './skeleton/InputBar.tsx'
+import { ComposerBar, InputBar } from './skeleton/InputBar.tsx'
 import { todoDockEntry } from './skeleton/TodoPanel.tsx'
 import { installStopShortcut } from './stop-shortcut.ts'
 import { TRAJECTORY_VIEW_ID, resolveActiveView } from './view-selection.ts'
@@ -294,6 +294,7 @@ export function apply(ctx: Context, config: Config = Config({})): void {
 
   const inputHub = new InputHub(ctx, t)
   const composerBlocks = new ComposerBlockRegistry()
+  const inputPolicies = createSnapshotStore<readonly ComposerInputPolicy[]>([])
 
   ctx.inject(['commandUi'], (scope) => {
     const commands = scope.get('commandUi') as FileCommandRegistry
@@ -353,6 +354,7 @@ export function apply(ctx: Context, config: Config = Config({})): void {
     },
     inject: (sessionId: SessionId | undefined): ConversationInjected => ({
       hooks: {
+        inputPolicies,
         composerBlock: sessionId === undefined ? ABSENT_BLOCK : composerBlocks.storeFor(sessionId),
       },
       selectWorkspace: workspaceId => workspaceNavigation.openWorkspace(workspaceId, (nextId) => {
@@ -445,8 +447,9 @@ export function apply(ctx: Context, config: Config = Config({})): void {
     }),
   }, ConversationSessionHeader)
 
-  const registerComposerBar = () => slots.register({
-    name: 'conversation.composer.bar',
+  const registerComposerBar = () => slots.registerFactory({
+    name: 'conversation.input',
+    scope: 'session-maybe',
     locale: NS,
     children: {
       'conversation.input.attachments': { kind: 'single', scope: 'session-maybe' },
@@ -568,12 +571,14 @@ export function apply(ctx: Context, config: Config = Config({})): void {
     yield registerConversationSession()
     yield registerHeader()
     yield registerSessionHeader()
+    yield slots.register({ name: 'conversation.composer.bar' }, ComposerBar)
     yield registerComposerBar()
   })
 
   ctx.plugin(ConversationController, {
     input: inputHub,
     blocks: composerBlocks,
+    inputPolicies,
     maxConcurrentFileUploads,
   })
   ctx.plugin(todoDockEntry)

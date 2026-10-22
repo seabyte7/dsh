@@ -129,7 +129,7 @@ async function bench() {
     return { instance, injected }
   }
   const composerApi = (id: SessionId | undefined) => {
-    const entry = entryOf('conversation.composer.bar')
+    const entry = runtime.factoryOf('conversation.input')
     return (entry.inject as unknown as (sessionId: SessionId | undefined) => ComposerBarInjected)(id)
   }
   const inputApi = (id: SessionId) => {
@@ -491,7 +491,7 @@ describe('Conversation inject API', () => {
 
   it('fails loud for an unknown binding or an unloaded scoped service', async () => {
     const b = await bench()
-    const entry = b.entryOf('conversation.composer.bar')
+    const entry = b.runtime.factoryOf('conversation.input')
     const injectBar = entry.inject as unknown as (
       sessionId: SessionId | undefined,
     ) => ComposerBarInjected
@@ -608,4 +608,20 @@ describe('Conversation inject API', () => {
     unsubscribe()
     await b.runtime.dispose()
   })
+})
+
+
+it('removes feature input policies with their owning plugin', async () => {
+  const b = await bench()
+  const source = b.residentApi(ROOT).hooks.inputPolicies
+  const policy = () => true
+  const feature = b.runtime.ctx.plugin({
+    inject: ['conversation'],
+    apply(ctx) { ctx.conversation.registerInputPolicy(policy) },
+  })
+  await feature
+  expect(source.getSnapshot()).toContain(policy)
+  await feature.dispose()
+  expect(source.getSnapshot()).not.toContain(policy)
+  await b.runtime.dispose()
 })

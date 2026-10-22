@@ -32,6 +32,7 @@
       "@deepseek-ai/dsh-client-ui-side-chat/client": ["./packages/client/ui-side-chat/src/client/index.ts"],
       "@deepseek-ai/dsh-side-chat-bundle": ["./packages/bundle/side-chat/src/index.ts"],
       "@deepseek-ai/dsh-side-chat/types": ["./packages/session/side-chat/src/types.ts"],
+      "@deepseek-ai/dsh-side-chat/client": ["./packages/session/side-chat/src/client/index.ts"],
       "@deepseek-ai/dsh-side-chat/question": ["./packages/session/side-chat/src/question.ts"],
       "@deepseek-ai/dsh-experimental-session-search": ["./packages/experimental/session-search/src/index.ts"],
       "@deepseek-ai/dsh-experimental-ralph-bundle": ["./packages/experimental/ralph-bundle/src/index.ts"],

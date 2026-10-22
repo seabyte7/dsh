@@ -1,5 +1,5 @@
 /** Durable source-to-target allocation; phase writes follow Session durability. */
-import { brandString } from '@deepseek-ai/dsh-brand'
+import { brandString, type Branded } from '@deepseek-ai/dsh-brand'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import { defineDomain, domainTable } from '@deepseek-ai/dsh-storage-domain'
 import { z } from 'zod'
@@ -14,6 +14,9 @@ const associationSchema = z.object({
   phase: z.enum(['allocated', 'created', 'ready']),
 }).strict()
 
+/** Opaque storage key for a legacy source or a source and side-chat pair. */
+export type SideChatAssociationKey = Branded<'SideChatAssociationKey'>
+
 /** One durable allocation. Missing ready targets are never silently replaced. */
 export type SideChatAssociation = z.infer<typeof associationSchema>
 
@@ -21,5 +24,5 @@ export type SideChatAssociation = z.infer<typeof associationSchema>
 export const sideChatDomain = defineDomain({
   name: 'side_chat',
   version: 1,
-  tables: { associations: domainTable<ReturnType<typeof SessionId>, SideChatAssociation>(associationSchema) },
+  tables: { associations: domainTable<SideChatAssociationKey, SideChatAssociation>(associationSchema) },
 })

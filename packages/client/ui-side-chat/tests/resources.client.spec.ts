@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SessionBinding, SessionReference } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { SideChatRequestId } from '@deepseek-ai/dsh-side-chat/types'
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 import { createSideChatResources } from '../src/client/resources.ts'
 import { parseSideChatAddress, sideChatAddress } from '../src/client/address.ts'
@@ -36,7 +37,7 @@ function fixture() {
 describe('side-chat addresses', () => {
   it('contains only an encoded source identity and accepts canonical spelling', () => {
     expect(sideChatAddress(SOURCE)).toBe('dsh-resource://sidechat/session/source%2Fa%3F%23')
-    expect(parseSideChatAddress(sideChatAddress(SOURCE))).toBe(SOURCE)
+    expect(parseSideChatAddress(sideChatAddress(SOURCE))).toEqual({ sourceSessionId: SOURCE })
   })
 
   it.each([
@@ -54,11 +55,35 @@ describe('side-chat addresses', () => {
 })
 
 describe('side-chat resource lifetime', () => {
+  it('keeps a newly opened chat empty when an old lookup for the same source completes later', async () => {
+    const f = fixture()
+    let completeOld!: (value: { ok: true; value: { sessionId: SessionId } }) => void
+    f.lookup.mockImplementation(request => request.requestId === undefined
+      ? new Promise((resolve) => { completeOld = resolve }) : Promise.resolve({ ok: true, value: {} }))
+    const oldFrame = f.stream.next()
+    const address = sideChatAddress(SOURCE, 'fresh' as SideChatRequestId)
+    const controller = new AbortController()
+    aborts.push(controller)
+    const fresh = f.resources.provider.open(address, { signal: controller.signal })[Symbol.asyncIterator]()
+    expect((await fresh.next()).value).toEqual({ ok: true, value: parseSideChatAddress(address) })
+    completeOld({ ok: true, value: { sessionId: TARGET } })
+    expect((await oldFrame).value).toMatchObject({ value: { reference: f.reference } })
+    expect(f.lookup).toHaveBeenCalledWith({ sourceSessionId: SOURCE, requestId: 'fresh' }, controller.signal)
+    const finished = fresh.next()
+    controller.abort()
+    expect((await finished).done).toBe(true)
+    expect(f.release).not.toHaveBeenCalled()
+    const oldFinished = f.stream.next()
+    f.controller.abort()
+    await oldFinished
+    expect(f.release).toHaveBeenCalledOnce()
+  })
+
   it('looks up an empty association without retaining or creating a Session', async () => {
     const f = fixture()
     f.lookup.mockResolvedValue({ ok: true, value: {} })
     expect(await f.stream.next()).toEqual({ done: false, value: { ok: true, value: { sourceSessionId: SOURCE } } })
-    expect(f.lookup).toHaveBeenCalledWith(SOURCE, f.controller.signal)
+    expect(f.lookup).toHaveBeenCalledWith({ sourceSessionId: SOURCE }, f.controller.signal)
     expect(f.retain).not.toHaveBeenCalled()
     const done = f.stream.next()
     f.controller.abort()
@@ -71,7 +96,7 @@ describe('side-chat resource lifetime', () => {
     f.lookup.mockResolvedValue({ ok: true, value: { sessionId: TARGET } })
     expect((await f.stream.next()).value).toEqual({ ok: true, value: { sourceSessionId: SOURCE, reference: f.reference } })
     expect(f.retain).toHaveBeenCalledWith(TARGET, { source: 'sideChat', signal: f.controller.signal })
-    f.resources.bind(SOURCE, TARGET)
+    f.resources.bind(sideChatAddress(SOURCE), TARGET)
     expect((await f.stream.next()).value).toEqual({ ok: true, value: { sourceSessionId: SOURCE, reference: f.reference } })
     expect(f.retain).toHaveBeenCalledOnce()
     const done = f.stream.next()
@@ -96,7 +121,7 @@ describe('side-chat resource lifetime', () => {
     await f.stream.next()
     const failure = new RemoteError('side-chat/unavailable', 'The source is archived', { reason: 'archived' })
     f.lookup.mockResolvedValue({ ok: false, error: failure })
-    await f.resources.refresh(SOURCE)
+    await f.resources.refresh(sideChatAddress(SOURCE))
     expect((await f.stream.next()).value).toEqual({ ok: false, error: failure })
     expect(f.retain).toHaveBeenCalledOnce()
     expect(f.release).not.toHaveBeenCalled()
@@ -117,7 +142,7 @@ describe('side-chat resource lifetime', () => {
     await f.stream.next()
     f.lookup.mockResolvedValue({ ok: true, value: { sessionId: TARGET } })
     f.retain.mockImplementationOnce(() => { throw new Error('Session scope unavailable') })
-    await expect(f.resources.refresh(SOURCE)).resolves.toBeUndefined()
+    await expect(f.resources.refresh(sideChatAddress(SOURCE))).resolves.toBeUndefined()
     expect((await f.stream.next()).value).toMatchObject({
       ok: false, error: { code: 'gateway/internal', message: 'Session scope unavailable' },
     })

@@ -60,6 +60,9 @@ function snapshotOf(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot {
 }
 
 interface BenchOptions {
+  textOnly?: boolean
+  pendingDraft?: InputBarProps['pendingDraft']
+  submissionBlocked?: string
   planEntry?: React.ReactNode
   /** The `plan` projection value the standard-kit useProjection serves. */
   plan?: { active: boolean; pending: boolean }
@@ -176,6 +179,8 @@ function bench(over?: BenchOptions) {
     return null
   }) as never
   const props: InputBarProps = {
+    renderFactorySlot: () => null,
+    useFactorySlot: () => () => null,
     usePanelInfo: selector => selector({ activePanelId: null }),
     sessionId: SID,
     SessionProvider: ({ children }) => children,
@@ -220,6 +225,9 @@ function bench(over?: BenchOptions) {
     t: over?.t ?? makeTranslate(zh, commonZh),
     renderSlot,
     variant: over?.variant ?? 'composer',
+    ...(over?.textOnly === undefined ? {} : { textOnly: over.textOnly }),
+    ...(over?.pendingDraft === undefined ? {} : { pendingDraft: over.pendingDraft }),
+    ...(over?.submissionBlocked === undefined ? {} : { submissionBlocked: over.submissionBlocked }),
     ...(over?.inert === true ? { disabled: true } : {}),
     ...(over?.blocked !== undefined ? { blocked: over.blocked } : {}),
     ...(over?.workspacePickerOpen !== undefined ? { workspacePickerOpen: over.workspacePickerOpen } : {}),
@@ -1912,4 +1920,58 @@ it('places context usage below the composer and hides it until the activity clos
   fireEvent.click(view.getByRole('button', { name: '上下文已用 25%' }))
   expect(view.getByRole('dialog', { name: '上下文已用' })).toBeTruthy()
   expect(view.getByRole('button', { name: '发送消息' })).toBeTruthy()
+})
+
+
+describe('shared text-only input', () => {
+  it.each(['queue', 'steer'] as const)('uses the shared busy preference %s for Enter and button delivery', async (busyEnter) => {
+    const f = bench({ draft: 'Side question', running: true, busyEnter, textOnly: true })
+    expect(f.slotCalls.every(call => call.key === 'conversation.composer.dock')).toBe(true)
+    fireEvent.keyDown(f.textarea, { key: 'Enter', code: 'Enter' })
+    await vi.waitFor(() => { expect(f.sink).toHaveBeenCalledWith('Side question', [], busyEnter, expect.any(AbortSignal)) })
+    await act(async () => { f.shell.setDraft('Another question') })
+    fireEvent.click(f.view.getByRole('button', { name: busyEnter === 'steer' ? '插话发送' : '排队发送' }))
+    await vi.waitFor(() => { expect(f.sink).toHaveBeenCalledWith('Another question', [], busyEnter, expect.any(AbortSignal)) })
+  })
+
+  it('blocks unsupported text submission while keeping the editor usable', () => {
+    const f = bench({ draft: '/fork', textOnly: true })
+    expect(f.placeholder).toBe('输入文本问题…')
+    expect(f.inputDisabled).toBe(false)
+    fireEvent.keyDown(f.textarea, { key: 'Enter', code: 'Enter' })
+    fireEvent.click(f.button)
+    expect(f.sink).not.toHaveBeenCalled()
+    expect(f.shell.snapshot.draft).toBe('/fork')
+  })
+
+  it('keeps unsupported attachments until the user removes them and retains the question', async () => {
+    const attachment = {
+      kind: 'image' as const, id: 'draft-text-only' as DraftAttachmentId,
+      file: new File(['image'], 'image.png', { type: 'image/png' }), previewUrl: 'blob:draft-text-only',
+    }
+    const f = bench({ draft: 'Side question', textOnly: true, attachments: [attachment] })
+    expect(f.button.disabled).toBe(true)
+    fireEvent.keyDown(f.textarea, { key: 'Enter', code: 'Enter' })
+    expect(f.sink).not.toHaveBeenCalled()
+    expect(f.shell.snapshot.attachmentIds).toEqual([attachment.id])
+    fireEvent.click(f.view.getByRole('button', { name: '移除附件' }))
+    expect(f.removeAttachment).toHaveBeenCalledWith(attachment.id)
+    expect(f.shell.snapshot.draft).toBe('Side question')
+    await vi.waitFor(() => { expect(f.shell.snapshot.attachmentIds).toEqual([]) })
+  })
+
+  it('edits a first question without borrowing the source draft or running state', () => {
+    const onChange = vi.fn()
+    const onSubmit = vi.fn()
+    const f = bench({ draft: 'SOURCE_DRAFT', running: true, textOnly: true,
+      pendingDraft: { text: 'First question', sending: false, onChange, onSubmit } })
+    expect(f.textarea.textContent).toBe('First question')
+    fireEvent.keyDown(f.textarea, { key: 'Enter', code: 'Enter', isComposing: true })
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(f.shell.snapshot.draft).toBe('SOURCE_DRAFT')
+    expect(f.sink).not.toHaveBeenCalled()
+    fireEvent.click(f.view.getByRole('button', { name: '发送消息' }))
+    expect(onSubmit).toHaveBeenCalledOnce()
+    expect(f.stop).not.toHaveBeenCalled()
+  })
 })

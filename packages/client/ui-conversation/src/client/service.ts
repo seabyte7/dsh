@@ -22,7 +22,7 @@ import type { ImageMediaType } from '@deepseek-ai/dsh-attachment'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type {
-  ComposerAttachment, ComposerFileAttachment, ComposerImageAttachment, DraftFileUpload,
+  ComposerAttachment, ComposerFileAttachment, ComposerImageAttachment, ComposerInputPolicy, DraftFileUpload,
 } from './contract/slots.ts'
 import type { QueueAction } from '@deepseek-ai/dsh-api-session-controller/types'
 import type { MessageId } from '@deepseek-ai/dsh-llm/brand'
@@ -45,6 +45,13 @@ export interface IConversation {
    * cannot import makes a session's input inert with its own reason.
    */
   readonly blocks: ComposerBlocks
+  /**
+   * Register a text-only input policy for every main or embedded Conversation.
+   * @param policy - pure predicate over the current Session projections.
+   * @returns caller-owned disposer restoring the remaining policies.
+   */
+  registerInputPolicy(policy: ComposerInputPolicy): () => void
+
   /**
    * Send a prompt into the caller scope's session (queued turn).
    * @param text - prompt text, sent verbatim as one text block.
@@ -155,6 +162,7 @@ export class ConversationController extends Service implements IConversation {
   readonly input: SessionInputResolver
   /** The per-session composer-block registry. */
   readonly blocks: ComposerBlocks
+  private readonly inputPolicies: SnapshotStore<readonly ComposerInputPolicy[]>
   /** Live upload state per file-kind draft; images never appear here. */
   readonly fileUploads: SnapshotStore<Record<string, DraftFileUpload>> = createSnapshotStore<Record<string, DraftFileUpload>>({})
   private readonly draftAttachments = new Map<DraftAttachmentId, ComposerAttachment>()
@@ -180,11 +188,13 @@ export class ConversationController extends Service implements IConversation {
   constructor(ctx: Context, config: {
     input: SessionInputResolver
     blocks: ComposerBlocks
+    inputPolicies?: SnapshotStore<readonly ComposerInputPolicy[]>
     maxConcurrentFileUploads: number
   }) {
     super(ctx, 'conversation')
     this.input = config.input
     this.blocks = config.blocks
+    this.inputPolicies = config.inputPolicies ?? createSnapshotStore<readonly ComposerInputPolicy[]>([])
     this.maxConcurrentFileUploads = config.maxConcurrentFileUploads
     ctx.effect(() => async () => {
       const operations = [...this.fileUploadOperations.values()]
@@ -198,6 +208,16 @@ export class ConversationController extends Service implements IConversation {
       this.draftAttachments.clear()
       this.fileUploads.set({})
     }, 'conversation draft attachments')
+  }
+
+  /** @inheritdoc */
+  registerInputPolicy(policy: ComposerInputPolicy): () => void {
+    const dispose = this.ctx.effect(() => {
+      if (this.inputPolicies.getSnapshot().includes(policy)) throw new Error('Input policy is already registered')
+      this.inputPolicies.set([...this.inputPolicies.getSnapshot(), policy])
+      return () => { this.inputPolicies.set(this.inputPolicies.getSnapshot().filter(value => value !== policy)) }
+    }, 'conversation.inputPolicy')
+    return () => { void dispose() }
   }
 
   /**

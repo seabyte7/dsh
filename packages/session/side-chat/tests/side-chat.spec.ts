@@ -31,11 +31,46 @@ const requestId = (value = 'first') => brandString<SideChatRequestId>(value)
 const question = (text: string) => createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text }] })
 
 describe('side-chat Host', () => {
+  it('starts an empty independent Session for a new side-chat identity on the same source', async () => {
+    const { ctx, model, root, dispose } = await host()
+    const source = await hosts[0]!.source()
+    const first = await ctx.sideChat.ensure({ sourceSessionId: source.id, requestId: requestId('old-chat') })
+    const old = ctx.agents.get(first.sessionId)!
+    old.followup(question('OLD_SIDE_CHAT_QUESTION'))
+    await old.whenIdle()
+    old.ctx.tools.register(defineContentToolFixture({
+      name: 'old-only', description: 'Old scoped fixture tool.', parameters: {}, execute: async () => [],
+    }))
+    old.followup(question('OLD_FAILED_QUESTION'))
+    await old.whenIdle()
+    const oldEvents = old.session.snapshotEvents()
+    expect(oldEvents.some(event => event.type === 'turn/end' && event.data.reason.kind === 'error')).toBe(true)
+    const fresh = await ctx.sideChat.ensure({ sourceSessionId: source.id, requestId: requestId('new-chat') })
+    expect(fresh.sessionId).not.toBe(first.sessionId)
+    const next = ctx.agents.get(fresh.sessionId)!
+    expect(ctx.sessionProjections.snapshot(next.session).values.sideChat?.snapshot).toBeNull()
+    expect(next.session.snapshotEvents().some(event => event.type === 'user/message' || (event.type === 'turn/end' && event.data.reason.kind === 'error'))).toBe(false)
+    next.followup(question('NEW_SIDE_CHAT_QUESTION'))
+    await next.whenIdle()
+    expect(JSON.stringify(model.requests.at(-1)?.messages)).not.toContain('OLD_SIDE_CHAT_QUESTION')
+    expect(old.session.snapshotEvents()).toEqual(oldEvents)
+    expect(await ctx.sideChat.ensure({ sourceSessionId: source.id, requestId: requestId('new-chat') })).toEqual(fresh)
+    await ctx.sessions.flush(next.session)
+    await ctx.sessions.flush(old.session)
+    await dispose()
+    const cold = await boot(root)
+    hosts.push(cold)
+    expect(await cold.ctx.sideChat.lookup({ sourceSessionId: source.id, requestId: requestId('new-chat') }))
+      .toMatchObject({ sessionId: fresh.sessionId })
+    expect(await cold.ctx.sideChat.lookup({ sourceSessionId: source.id, requestId: requestId('old-chat') }))
+      .toMatchObject({ sessionId: first.sessionId })
+  })
+
   it('defers creation until ensure and serializes concurrent requests to one root Agent', async () => {
     const { ctx } = await host()
     const source = await hosts[0]!.source()
     expect(await ctx.sideChat.lookup({ sourceSessionId: source.id })).toEqual({})
-    const results = await Promise.all(['first', 'second', 'first'].map(value => ctx.sideChat.ensure({ sourceSessionId: source.id, requestId: requestId(value) })))
+    const results = await Promise.all(['first', 'first', 'first'].map(value => ctx.sideChat.ensure({ sourceSessionId: source.id, requestId: requestId(value) })))
     expect(new Set(results.map(result => result.sessionId)).size).toBe(1)
     const target = ctx.agents.get(results[0]!.sessionId)!
     expect(ctx.agents.roots()).toContain(target)
@@ -103,7 +138,7 @@ describe('side-chat Host', () => {
     const put = vi.spyOn(table, 'put')
     put.mockRejectedValueOnce(new Error('association write failed'))
     await expect(ctx.sideChat.ensure({ sourceSessionId: source.id, requestId: requestId() })).rejects.toMatchObject({ details: { reason: 'storage' } })
-    const recovered = await ctx.sideChat.ensure({ sourceSessionId: source.id, requestId: requestId('retry') })
+    const recovered = await ctx.sideChat.ensure({ sourceSessionId: source.id, requestId: requestId() })
     expect(recovered.sessionId).toBe(allocated.sessionId)
     expect(ctx.agents.list().filter(agent => agent.id === recovered.sessionId)).toHaveLength(1)
   })

@@ -3,12 +3,13 @@ import type { Branded } from '@deepseek-ai/dsh-brand'
 import type { OptionalSessionSeq, SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-session-projection/types'
 
-/** Stable identity of one ensure operation, retained across uncertain responses. */
+/** Stable side-chat identity, retained across creation retries and view restoration. */
 export type SideChatRequestId = Branded<'SideChatRequestId'>
 
-/** Source conversation whose one associated question Session is addressed. */
+/** Source conversation and optional side-chat identity; omission addresses its legacy association. */
 export interface SideChatLookupRequest {
   readonly sourceSessionId: SessionId
+  readonly requestId?: SideChatRequestId
 }
 
 /** Idempotent association creation request; it never submits a prompt. */
@@ -32,7 +33,7 @@ export interface SideChatLookupValue {
   readonly snapshot?: SideChatSnapshot
 }
 
-/** The sole target assigned to the source, including on repeated requests. */
+/** The target assigned to this side-chat identity, including on repeated requests. */
 export interface SideChatEnsureValue {
   readonly sessionId: SessionId
 }

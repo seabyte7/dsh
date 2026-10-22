@@ -8,6 +8,8 @@ Conversation 是 Client `SessionEventLikeEntry` window 与浏览器 view 之间�
 
 ## 数据模型与所有权
 
+Conversation 页面通过 `conversation.input` Factory 复用编辑器和发送控件。功能插件以随插件释放的会话投影策略选择纯文本输入，该模式同时作用于主页面和内嵌页面。[包参考](../../packages/client/ui-conversation/README.zh.md)说明输入选项与会话建立前的草稿。
+
 Session Controller 拥有连续的已加载逻辑 event window。每个 `SessionEventLikeEntry` 要么是表示一个持久事件的 `{ type: 'event', event: SessionEvent }`，要么是表示一个 Client-only `assistant/live-chunk` 呈现的 `{ type: 'transient', event: AssistantLiveChunkEvent }`；两种内部 event 都公开 `type`、`seq`、`time` 与 `data`。`ui-conversation` 把这些 entry 直接交给 assembler，不另开 history stream。每个 Session 对应一个 `ConversationNodeAssembler`，它应用所有已注册 Definition，并为每个已注册 view target 发布独立 source。
 
 | 概念 | Owner 与用途 |

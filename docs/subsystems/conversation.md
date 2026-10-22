@@ -8,6 +8,8 @@ This page defines the data model and the extension path for a business-owned Con
 
 ## Data model and ownership
 
+Conversation hosts reuse the `conversation.input` Factory for their editor and submission controls. Feature plugins select text-only input through effect-owned Session-projection policies; the same selection applies in main and embedded hosts. The [package reference](../../packages/client/ui-conversation/README.md) owns input options and pre-Session drafts.
+
 The Session Controller owns the contiguous loaded logical-event window. Each `SessionEventLikeEntry` is either `{ type: 'event', event: SessionEvent }` for one durable event or `{ type: 'transient', event: AssistantLiveChunkEvent }` for one Client-only `assistant/live-chunk` presentation. Both inner events expose `type`, `seq`, `time`, and `data`. `ui-conversation` passes these entries to the assembler without opening a second history stream. One `ConversationNodeAssembler` per Session applies every registered Definition and publishes an independent source for each registered view target.
 
 | Concept | Owner and purpose |

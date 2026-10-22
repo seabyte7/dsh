@@ -8,6 +8,8 @@ import { resolveSubmitMode } from '../submission-policy.ts'
 import { registerComposerKeymap } from './keymap.ts'
 
 interface DraftViewGate {
+  textOnly?: boolean
+  submissionBlocked?: string | undefined
   locked: boolean
   machineBusy: boolean
   canSteerQueue: boolean
@@ -109,13 +111,13 @@ export function installDraftKeymap(
   gate: MutableRefObject<DraftViewGate>,
 ): () => void {
   return registerComposerKeymap(editor, {
-    arbitrate: (key, composing) => keyboard.arbitrate(key, composing),
+    arbitrate: (key, composing) => gate.current.textOnly ? 'pass' : keyboard.arbitrate(key, composing),
     space: () => {
-      if (gate.current.machineBusy || gate.current.locked) return false
+      if (gate.current.textOnly || gate.current.machineBusy || gate.current.locked) return false
       return keyboard.space()
     },
     dismissPopup: () => { keyboard.dismissPopup() },
-    canSubmit: () => !gate.current.locked && !gate.current.machineBusy,
+    canSubmit: () => !gate.current.locked && !gate.current.machineBusy && gate.current.submissionBlocked === undefined,
     submit: (accelerated) => {
       const g = gate.current
       // Empty-draft accelerated Enter acts on the queue instead of the

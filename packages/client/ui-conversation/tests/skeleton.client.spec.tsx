@@ -138,6 +138,7 @@ function mount(
     nestedSubagent?: boolean
     /** A composer block another plugin raised for this session. */
     composerBlock?: { reason: string }
+    textOnlyPolicy?: boolean
     /** Mutable view ledger used by registration-order regressions. */
     viewTabs?: ViewTab[]
   } = {},
@@ -272,6 +273,8 @@ function mount(
       const bar = owner as ComposerBarOwnerProps
       return (
         <InputBar
+          renderFactorySlot={() => null}
+          useFactorySlot={() => () => null}
           sessionId={SID}
           SessionProvider={({ children }) => children}
           useResource={useResource}
@@ -347,6 +350,7 @@ function mount(
       ...allowAllAccess,
       useProjection: (() => undefined),
       useComposerBlock: select => select(options.composerBlock),
+      useInputPolicies: select => select(options.textOnlyPolicy ? [() => true] : []),
       useInput,
       inputActions,
       renderSlot,
@@ -882,4 +886,12 @@ describe('ConversationRoot resident composer', () => {
     const b = mount(sessionSnapshotOf({ blank: true }))
     expect(b.view.container.querySelector('[data-width-handle]')).toBeNull()
   })
+})
+
+
+it('applies a feature input policy in the ordinary main Conversation', () => {
+  const f = mount(sessionSnapshotOf({ blank: false }), undefined, undefined, { textOnlyPolicy: true })
+  expect(f.slotCalls).not.toContain('conversation.input.model')
+  expect(f.slotCalls).not.toContain('conversation.input.permission')
+  expect(f.view.getByRole('textbox')).toBeTruthy()
 })

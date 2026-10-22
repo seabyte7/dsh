@@ -3070,7 +3070,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-side-chat`
 
 - `inject`: `agents` · `agentPresets` · `remoteAccess` · `sessions` · `sessionPersistence` · `sessionProjections` · `sessionQuery` · `sessionReferenceResolver` · `storageDomain` · `tools` · `workspaceRegistry`
-- `source`: [`packages/session/side-chat/src/index.ts:28`](../packages/session/side-chat/src/index.ts)
+- `source`: [`packages/session/side-chat/src/index.ts:29`](../packages/session/side-chat/src/index.ts)
 
 ```ts config-catalog
 /** Deployment policy for the question preset and fixed model route. */
