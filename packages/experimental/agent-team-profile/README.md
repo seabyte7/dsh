@@ -50,6 +50,8 @@ The layer adds the Agent Teams domain and its scoped creation, roster, messaging
 
 In Web and Desktop conversations, the [Team UI](../client-ui-agent-team/README.md) displays the member roster and shared task board and opens teammate sessions. The same bundle switch controls the tools and browser UI. The Plugins page reads the bundle's [icon](icon.svg) from its `package.json.icon` declaration, including while the bundle is disabled.
 
+The shipped layer limits preset-composed Team roots to `standard`, `cordis`, and `ptc`; preset-free Headless/SDK roots remain eligible. Text-only side chats receive no Team identity, tools, or prompts. Custom Team presets must be listed in the `agent-team` row’s `rootAgentPresets` configuration.
+
 -----
 
 <a id="understand-the-implementation"></a>

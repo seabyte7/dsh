@@ -57,6 +57,7 @@ export class TeamService extends Service {
   static inject = ['agents', 'sessions', 'sessionPersistence', 'sessionProjections', 'subagents']
 
   static Config: z<Config> = z.object({
+    rootAgentPresets: (z.array(z.string().min(1)) as z<string[] | undefined>).default(undefined),
     maxMembers: z.number().step(1).min(1).default(DEFAULT_MAX_MEMBERS),
     maxTasks: z.number().step(1).min(1).default(DEFAULT_MAX_TASKS),
     maxMessageBytes: z.number().step(1).min(1).default(DEFAULT_MAX_MESSAGE_BYTES),
@@ -64,7 +65,7 @@ export class TeamService extends Service {
   })
 
   /** Validated deployment limits used by every Team operation. */
-  private readonly config: Required<Config>
+  private readonly config: Required<Omit<Config, 'rootAgentPresets'>> & Pick<Config, 'rootAgentPresets'>
 
   private readonly activity: TeamActivity
   private readonly lifecycle: TeamRuntimeLifecycle
@@ -75,6 +76,7 @@ export class TeamService extends Service {
   constructor(ctx: Context, config: Config = {}) {
     super(ctx, 'agentTeams')
     this.config = {
+      ...config.rootAgentPresets === undefined ? {} : { rootAgentPresets: [...config.rootAgentPresets] },
       maxMembers: positiveLimit('maxMembers', config.maxMembers ?? DEFAULT_MAX_MEMBERS),
       maxTasks: positiveLimit('maxTasks', config.maxTasks ?? DEFAULT_MAX_TASKS),
       maxMessageBytes: positiveLimit('maxMessageBytes', config.maxMessageBytes ?? DEFAULT_MAX_MESSAGE_BYTES),
@@ -87,7 +89,7 @@ export class TeamService extends Service {
     this.activity = new TeamActivity()
     this.lifecycle = new TeamRuntimeLifecycle(this.config.disposalTimeoutMs)
     this.journal = new TeamJournal(ctx, (root) => { this.activity.notify(TeamId(root.id)) })
-    this.roster = new TeamRoster(ctx, this.journal, this.lifecycle, this.config.maxMembers)
+    this.roster = new TeamRoster(ctx, this.journal, this.lifecycle, this.config.maxMembers, this.config.rootAgentPresets)
     this.tasks = new TeamTaskBoard(this.journal, this.config.maxTasks)
 
     ctx.on('agent/created', ({ agent }) => { this.scheduleRecovery(agent) })

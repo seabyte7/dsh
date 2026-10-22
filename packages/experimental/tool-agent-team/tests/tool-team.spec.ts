@@ -69,7 +69,7 @@ afterEach(async () => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
 })
 
-async function setup(script: ConstructorParameters<typeof MockAdapter>[0], legacyControl = false) {
+async function setup(script: ConstructorParameters<typeof MockAdapter>[0], legacyControl = false, config?: import('../../agent-team/src/types.ts').Config) {
   const ctx = new Context()
   contexts.add(ctx)
   await mountAgentLoopTestDependencies(ctx)
@@ -83,7 +83,7 @@ async function setup(script: ConstructorParameters<typeof MockAdapter>[0], legac
   if (legacyControl) await ctx.plugin(ToolSubagentControl)
   await ctx.plugin(SubagentSpawn, { providerName: 'spawn' })
   await ctx.plugin(SubagentFork, { providerName: 'fork' })
-  await ctx.plugin(TeamService)
+  await ctx.plugin(TeamService, config)
   const fiber = await ctx.plugin(toolTeam)
   const adapter = new MockAdapter(script)
   ctx.llm.registerAdapter(['mock'], adapter)
@@ -778,4 +778,23 @@ describe('dsh-tool-team', () => {
     await vi.waitFor(() => { expect(ctx.agents.get(childId)).toBeUndefined() }, { timeout: 5_000 })
     expect(ctx.agentTeams.listMembers(lead)[1]).toMatchObject({ provider: 'team-fresh' })
   })
+})
+
+
+it('limits implicit Team Leads and tool installation to the configured root presets', async () => {
+  const { ctx, lead } = await setup([], false, { rootAgentPresets: ['enabled'] })
+  expect(ctx.agentTeams.tryMembership(lead)?.role).toBe('lead')
+  const denied = await ctx.agents.create({
+    sessionId: SessionId('question-root'), meta: { agentPreset: 'question' },
+    agentOptions: { provider: 'mock', model: 'mock' },
+  })
+  expect(ctx.agentTeams.tryMembership(denied.agent)).toBeUndefined()
+  expect(ctx.tools.schemas(denied.agent).filter(tool => TOOL_NAMES.includes(tool.name))).toEqual([])
+  expect(() => ctx.agentTeams.listMembers(denied.agent)).toThrow('not a member')
+  const handle = await ctx.agents.create({
+    sessionId: SessionId('enabled-root'), meta: { agentPreset: 'enabled' },
+    agentOptions: { provider: 'mock', model: 'mock' },
+  })
+  expect(ctx.agentTeams.tryMembership(handle.agent)?.role).toBe('lead')
+  expect(ctx.tools.schemas(handle.agent).map(tool => tool.name).sort()).toEqual(TOOL_NAMES)
 })

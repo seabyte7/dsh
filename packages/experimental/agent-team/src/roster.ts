@@ -60,12 +60,14 @@ export class TeamRoster {
    * @param journal - authoritative Lead-log transaction owner.
    * @param lifecycle - shared Team runtime admission cutoff.
    * @param maxMembers - maximum immutable roster entries per Team.
+   * @param rootAgentPresets - allowed Lead presets; preset-free roots remain eligible.
    */
   constructor(
     private readonly ctx: Context,
     private readonly journal: TeamJournal,
     private readonly lifecycle: TeamRuntimeLifecycle,
     private readonly maxMembers: number,
+    private readonly rootAgentPresets?: readonly string[],
   ) {}
 
   /**
@@ -101,7 +103,7 @@ export class TeamRoster {
           // host forks are independent roots; subagent descriptors distinguish
           // provider-owned workers that must not receive a nested Team identity.
           if (this.subagentDescriptor(agent)) return undefined
-          return { root: agent, id: TeamId(agent.id), role: 'lead', name: 'lead' }
+          return this.leadMembership(agent)
         }
       }
       // A continuation can briefly outlive its parent during child-first teardown.
@@ -109,13 +111,19 @@ export class TeamRoster {
       // resumed ordinary fork has no descriptor in its own suffix and remains a
       // valid new root whose inherited Team records stay outside its projected Team state.
       if (this.subagentDescriptor(agent)) return undefined
-      return { root: agent, id: TeamId(agent.id), role: 'lead', name: 'lead' }
+      return this.leadMembership(agent)
     } catch {
       // This method is used by lifecycle observers and teardown discovery. A
       // malformed durable stream is surfaced by authoritative Team operations;
       // the non-throwing probe must not veto unrelated Agent lifecycle edges.
       return undefined
     }
+  }
+
+  private leadMembership(agent: Agent): TeamMembership | undefined {
+    const preset = agent.session.header.agentPreset
+    if (preset !== undefined && this.rootAgentPresets !== undefined && !this.rootAgentPresets.includes(preset)) return undefined
+    return { root: agent, id: TeamId(agent.id), role: 'lead', name: 'lead' }
   }
 
   /**

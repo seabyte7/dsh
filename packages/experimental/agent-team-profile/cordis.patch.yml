@@ -17,6 +17,7 @@
     - id: agent-team
       name: '@deepseek-ai/dsh-experimental-agent-team'
       config:
+        rootAgentPresets: [standard, cordis, ptc]
         maxMembers: 8
         maxTasks: 256
         maxMessageBytes: 65536

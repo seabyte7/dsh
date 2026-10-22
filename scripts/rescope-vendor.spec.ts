@@ -1,7 +1,7 @@
 /** Recorded npm evidence stays intact while authored files and exact edits remain checked. */
 
 import { describe, expect, it } from 'vitest'
-import { exactEditState, isRescopeExcluded } from './rescope-vendor.ts'
+import { exactEditState, isRescopeExcluded, rewriteRescopeText } from './rescope-vendor.ts'
 
 const ANCHOR = '\n## Sync procedure'
 const INSERTED = `\n15. **rescope**: one log entry.\n${ANCHOR}`
@@ -49,5 +49,37 @@ describe('exactEditState', () => {
     // A moved or partially applied site: neither state is complete.
     expect(exactEditState('a = 1\nb = 2\n', 'a = 1', 'b = 2', 1)).toBe('invalid')
     expect(exactEditState('x\n', 'a = 1', 'b = 2', 1)).toBe('invalid')
+  })
+})
+
+describe('product identifiers', () => {
+  it.each([
+    'packages/experimental/agent-team-profile/tests/profile.spec.ts',
+    'packages/client/ui-agent-preset/tests/components.client.spec.tsx',
+    'docs/subsystems/schedule.md',
+    'docs/upgrade-guide/v0.2.1-rc.2/agent-team-root-presets/guide.md',
+    'docs/upgrade-guide/v0.2.1-rc.2/agent-team-root-presets/guide.zh.md',
+    'packages/bundle/web-app/cordis.patch.yml',
+  ])('preserves the preset id in %s while still renaming other package names', (file) => {
+    const text = 'Presets: `standard`, `cordis`, `ptc`; package: `cosmokit`.\n'
+    expect(rewriteRescopeText(text, file).text).toBe(text.replace('`cosmokit`', '`@deepseek-ai/cosmokit`'))
+  })
+
+  it.each([
+    'packages/extensions/cordis-host-runner/tests/inspect-registry.spec.ts',
+    'snapshots/session/cordis-inspect-liveness/client-fixture.mjs',
+    'snapshots/session/cordis-inspect-timeout/client-fixture.mjs',
+  ])('preserves inspect event names in %s', (file) => {
+    const text = "ctx.on('cordis/inspect-query', listener)\nctx.on('cordis/inspect-query-resolved', listener)\n"
+    expect(rewriteRescopeText(text, file)).toEqual({ text, lines: 0 })
+  })
+
+  it('continues to reject unscoped package references outside the declared exceptions', () => {
+    const text = "import { Context } from 'cordis'\n"
+    expect(rewriteRescopeText(text, 'packages/example/src/index.ts')).toEqual({
+      text: "import { Context } from '@deepseek-ai/cordis'\n", lines: 1,
+    })
+    expect(rewriteRescopeText('name: cordis\n', 'packages/example/cordis.yml').text)
+      .toBe('name: @deepseek-ai/cordis\n')
   })
 })

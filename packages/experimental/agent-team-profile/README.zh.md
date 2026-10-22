@@ -20,6 +20,8 @@ kind: "package-bundle"
 - [已知限制与延期工作](#known-limitations-and-deferred-work)
 - [开发备注](#dev-note)
 
+默认装配仅允许 `standard`、`cordis`、`ptc` 预设的根会话参与 Team；无预设的 Headless／SDK 根会话仍可参与。纯文本侧聊不获得 Team 身份、工具或提示词。自定义 Team 预设需加入 `agent-team` 行的 `rootAgentPresets` 配置。
+
 -----
 
 <a id="use-this-package"></a>

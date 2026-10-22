@@ -48,6 +48,7 @@ With the tools installed, the model does the rest on request — for example, "c
 
 | Field | Default | Meaning |
 |---|---|---|
+| `rootAgentPresets` | unrestricted | Allowed presets for ordinary Team roots; preset-free roots remain eligible |
 | `maxMembers` | `16` | Maximum teammates a team may ever create, including failed ones |
 | `maxTasks` | `256` | Maximum active tasks on the board |
 | `maxMessageBytes` | `65,536` | Maximum size of one sent message |
@@ -123,7 +124,7 @@ The [Agent Teams Agent Note](../../../.agents/notes/implemented/feature/2026-08-
 
 ### Team identity and roster
 
-Every ordinary runtime root is the implicit Lead of a Team whose `TeamId` equals its `SessionId`; there is no creation event, and durable Team state begins with the first member or task record. `spawnTeammate()` first appends and flushes a `provisioning` member record, then asks the configured provider to create the reserved child; a provider failure appends a durable `failed` member. A fresh child starts with no Lead history; a fork child captures the Lead's completed-turn prefix once. Recovery reconciles an unterminated provisioning record against the child's independently persisted Session: a matching direct-parent and continuable descriptor plus a recorded initial user message produces `active`, and anything else produces `failed`. If recovery wins a same-process race, the creator accepts the terminal state or reports `TEAM_PROVISIONING_CONFLICT` and drains the child. Names are reserved by the first provisioning record and never reused.
+Every eligible ordinary runtime root is the implicit Lead of a Team whose `TeamId` equals its `SessionId`; there is no creation event, and durable Team state begins with the first member or task record. `spawnTeammate()` first appends and flushes a `provisioning` member record, then asks the configured provider to create the reserved child; a provider failure appends a durable `failed` member. A fresh child starts with no Lead history; a fork child captures the Lead's completed-turn prefix once. Recovery reconciles an unterminated provisioning record against the child's independently persisted Session: a matching direct-parent and continuable descriptor plus a recorded initial user message produces `active`, and anything else produces `failed`. If recovery wins a same-process race, the creator accepts the terminal state or reports `TEAM_PROVISIONING_CONFLICT` and drains the child. Names are reserved by the first provisioning record and never reused.
 
 ### Direct messages and historical compatibility
 

@@ -85,6 +85,8 @@ const GENERIC_SKIPS: readonly GenericSkip[] = [
   { file: 'packages/boot/app-boot/tests/config-schema.spec.ts', upstream: ['schemastery'] },
   // Asserts the vendored-manifest table, which gains an upstream-name column.
   { file: 'scripts/gen-third-party-notices.spec.ts', upstream: RENAMES.map(rename => rename.upstream) },
+  // Negative controls deliberately contain upstream names beside their published forms.
+  { file: 'scripts/rescope-vendor.spec.ts', upstream: RENAMES.map(rename => rename.upstream) },
   // `cordis` is also an agent-preset id, so in these files the bare name is
   // product data, not a package reference. Renaming it changed which preset
   // the creator flow stages and which id the roster reports.
@@ -98,6 +100,25 @@ const GENERIC_SKIPS: readonly GenericSkip[] = [
   { file: 'apps/cli/tests/profiles/web/tests/fixtures/creator-plugin-manager.mjs', upstream: ['cordis'] },
   { file: 'apps/web/tests/agent-preset-authoring.e2e.ts', upstream: ['cordis'] },
   { file: 'packages/preset/agent-preset-registry/tests/session.spec.ts', upstream: ['cordis'] },
+  { file: 'apps/cli/tests/optional-bundle-transitions.e2e.ts', upstream: ['cordis'] },
+  { file: 'apps/web/tests/agent-preset-selection.e2e.ts', upstream: ['cordis'] },
+  { file: 'apps/web/tests/developer-tools-settings.e2e.ts', upstream: ['cordis'] },
+  { file: 'docs/subsystems/schedule.md', upstream: ['cordis'] },
+  { file: 'docs/subsystems/schedule.zh.md', upstream: ['cordis'] },
+  { file: 'docs/upgrade-guide/v0.2.0-rc.2/schedule-bundle-retired/guide.md', upstream: ['cordis'] },
+  { file: 'docs/upgrade-guide/v0.2.0-rc.2/schedule-bundle-retired/guide.zh.md', upstream: ['cordis'] },
+  { file: 'docs/upgrade-guide/v0.2.1-alpha.1/subagent-preset-composition/guide.md', upstream: ['cordis'] },
+  { file: 'docs/upgrade-guide/v0.2.1-alpha.1/subagent-preset-composition/guide.zh.md', upstream: ['cordis'] },
+  { file: 'docs/upgrade-guide/v0.2.1-rc.2/agent-team-root-presets/guide.md', upstream: ['cordis'] },
+  { file: 'docs/upgrade-guide/v0.2.1-rc.2/agent-team-root-presets/guide.zh.md', upstream: ['cordis'] },
+  { file: 'docs/user/guide/schedule.md', upstream: ['cordis'] },
+  { file: 'docs/user/guide/schedule.zh.md', upstream: ['cordis'] },
+  { file: 'packages/bundle/web-app/cordis.patch.yml', upstream: ['cordis'] },
+  { file: 'packages/client/ui-agent-preset/src/client/CreatePluginMenuItem.tsx', upstream: ['cordis'] },
+  { file: 'packages/client/ui-agent-preset/tests/components.client.spec.tsx', upstream: ['cordis'] },
+  { file: 'packages/client/ui-agent-preset/tests/create-plugin-menu-item.client.spec.tsx', upstream: ['cordis'] },
+  { file: 'packages/client/ui-agent-preset/tests/section-store.client.spec.ts', upstream: ['cordis'] },
+  { file: 'packages/experimental/agent-team-profile/tests/profile.spec.ts', upstream: ['cordis'] },
   // The preset-roster loop names the `cordis` preset id, not a package.
   { file: 'apps/cli/tests/windows-shell.spec.ts', upstream: ['cordis'] },
   // GROUP_ORDER holds `packages/<group>/` directory names, not package names.
@@ -118,6 +139,9 @@ const GENERIC_SKIPS: readonly GenericSkip[] = [
   { file: 'packages/extensions/cordis-host-runner/src/inspect-registry.ts', upstream: ['cordis'] },
   { file: 'packages/extensions/cordis-host-runner/src/types.ts', upstream: ['cordis'] },
   { file: 'packages/extensions/cordis-host-runner/tests/helpers.ts', upstream: ['cordis'] },
+  { file: 'packages/extensions/cordis-host-runner/tests/inspect-registry.spec.ts', upstream: ['cordis'] },
+  { file: 'snapshots/session/cordis-inspect-liveness/client-fixture.mjs', upstream: ['cordis'] },
+  { file: 'snapshots/session/cordis-inspect-timeout/client-fixture.mjs', upstream: ['cordis'] },
   { file: 'packages/extensions/cordis-host-runner/tests/runner.spec.ts', upstream: ['cordis'] },
   { file: 'packages/extensions/cordis-host-runner/tests/versioning.spec.ts', upstream: ['cordis'] },
   { file: 'packages/extensions/tool-cordis/src/api-catalog.ts', upstream: ['cordis'] },
@@ -517,6 +541,17 @@ function rewrite(text: string, file: string, all: readonly Pattern[]): { text: s
     return next
   })
   return { text: out.join('\n'), lines }
+}
+
+/**
+ * Apply the package-name mapping while preserving a file's declared runtime identifiers.
+ * @param text - authored file contents.
+ * @param file - repository-relative file path with forward slash separators.
+ * @param reverse - restore upstream package names when true; otherwise use published names.
+ * @returns rewritten contents and the number of changed lines.
+ */
+export function rewriteRescopeText(text: string, file: string, reverse = false): { text: string; lines: number } {
+  return rewrite(text, file, patterns(reverse))
 }
 
 function classify(file: string): string {

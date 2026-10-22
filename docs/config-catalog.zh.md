@@ -848,6 +848,8 @@ export interface Config {
 ```ts config-catalog
 /** Team-service deployment limits. */
 export interface Config {
+  /** Allowed presets for ordinary Team roots; preset-free roots remain eligible, and omission permits every preset. */
+  readonly rootAgentPresets?: string[] | undefined
   /** Maximum immutable teammate names retained by one Team. */
   readonly maxMembers?: number
   /** Maximum non-deleted tasks retained by one Team. */
