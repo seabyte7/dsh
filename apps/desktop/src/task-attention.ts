@@ -65,25 +65,27 @@ export class DesktopTaskAttention {
 
   /**
    * Bind native focus and navigation to the owned main window.
+   * Retain its WebContents emitter for cleanup after native window destruction.
    * @param window - the application window; closing it to the background retains unread results.
    */
   bind(window: AttentionWindow): void {
     this.unbind?.()
     this.window = window
     this.view = null
+    const webContents = window.webContents
     const focus = (): void => { if (this.acknowledge()) this.changed() }
     const clear = (): void => { this.view = null }
     const navigation = (_event: Electron.Event, _url: string, inPlace: boolean, mainFrame: boolean): void => {
       if (mainFrame && !inPlace) clear()
     }
     window.on('focus', focus)
-    window.webContents.on('did-start-navigation', navigation)
-    window.webContents.on('render-process-gone', clear)
+    webContents.on('did-start-navigation', navigation)
+    webContents.on('render-process-gone', clear)
     window.on('closed', clear)
     this.unbind = () => {
       window.off('focus', focus)
-      window.webContents.off('did-start-navigation', navigation)
-      window.webContents.off('render-process-gone', clear)
+      webContents.off('did-start-navigation', navigation)
+      webContents.off('render-process-gone', clear)
       window.off('closed', clear)
     }
   }

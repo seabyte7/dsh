@@ -107,6 +107,23 @@ it('invalidates viewing on reload or renderer loss and releases all native liste
   expect(f.badge).toHaveBeenLastCalledWith('')
 })
 
+it('releases completion listeners after the native window has been destroyed', () => {
+  const f = fixture()
+  const contents = f.native.webContents
+  f.completed()
+  f.native.destroyed = true
+  Object.defineProperty(f.native, 'webContents', {
+    get() { throw new Error('Object has been destroyed') },
+  })
+  f.native.emit('closed')
+  expect(() => { f.attention.dispose() }).not.toThrow()
+  expect(f.native.listenerCount('focus')).toBe(0)
+  expect(f.native.listenerCount('closed')).toBe(0)
+  expect(contents.eventNames()).toEqual([])
+  expect(f.attention.status().unread).toEqual([])
+  expect(f.badge).toHaveBeenLastCalledWith('')
+})
+
 it('retains unread results and publishes them when the native badge fails', () => {
   const f = fixture()
   const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
