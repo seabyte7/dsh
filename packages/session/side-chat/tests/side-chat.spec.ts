@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import { createUserMessage, ToolCallId } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
-import { defineContentToolFixture } from '@deepseek-ai/dsh-tools'
+import { defineContentToolFixture } from '@deepseek-ai/dsh-tool-testkit'
 import { formatSessionReferenceMention } from '@deepseek-ai/dsh-session-reference'
 import SideChat from '../src/index.ts'
 import type { SideChatRequestId } from '../src/types.ts'
@@ -196,8 +196,8 @@ describe('side-chat Host', () => {
     expect(ctx.tools.schemas(target)).toEqual([])
     const execute = vi.fn(async () => [])
     target.ctx.tools.register(defineContentToolFixture({ name: 'write', description: 'Fixture write.', parameters: {}, execute }))
-    const result = await ctx.tools.execute({ agent: target, name: 'write', callId: ToolCallId('denied'), arguments: {}, signal: new AbortController().signal })
-    expect(result.isError).toBe(true)
+    const result = await ctx.tools.execute({ agent: target, calls: [{ type: 'tool-call', id: ToolCallId('denied'), name: 'write', arguments: '{}' }], signal: new AbortController().signal })
+    expect(result.results[0]?.result.isError).toBe(true)
     expect(JSON.stringify(result)).toContain('Side chat does not permit tools')
     expect(execute).not.toHaveBeenCalled()
   })

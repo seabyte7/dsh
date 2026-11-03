@@ -10,7 +10,7 @@ import { scopeOf, scopeParentOf, type ScopeKey } from '@deepseek-ai/dsh-scope'
 import type { UserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId, type SessionHeader } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-persistence'
-import type {} from '@deepseek-ai/dsh-session-projection'
+import type { ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-session-query'
 import { parseSessionReferenceText } from '@deepseek-ai/dsh-session-reference'
 import type { Domain, KvTable } from '@deepseek-ai/dsh-storage-domain'
@@ -20,7 +20,7 @@ import type {} from '@deepseek-ai/dsh-workspace'
 import { sideChatProjection } from './projection.ts'
 import { sideChatDomain, type SideChatAssociation, type SideChatAssociationKey } from './storage.ts'
 import type {
-  SideChatEnsureRequest, SideChatEnsureValue, SideChatLookupRequest, SideChatLookupValue, SideChatSnapshot,
+  SideChatEnsureRequest, SideChatEnsureValue, SideChatLookupRequest, SideChatLookupValue, SideChatProjectionState, SideChatSnapshot,
 } from './types.ts'
 
 export type * from './types.ts'
@@ -55,6 +55,7 @@ export class SideChat extends TypertRemoteService {
   })
 
   private readonly owner: Context
+  private projection!: ProjectionHandle<SideChatProjectionState>
   private domain?: Domain<typeof sideChatDomain>
   private associations?: KvTable<SideChatAssociationKey, SideChatAssociation>
   private readonly chains = new Map<SessionId, Promise<void>>()
@@ -96,7 +97,7 @@ export class SideChat extends TypertRemoteService {
     this.operations.add(acquire)
     try { await acquire } finally { this.operations.delete(acquire) }
     this.assertOpen()
-    this.owner.sessionProjections.register(sideChatProjection(this.config.agentPreset))
+    this.projection = await this.owner.sessionProjections.register(sideChatProjection(this.config.agentPreset))
     this.owner.on('agent/created', ({ agent }) => {
       if (this.recordForTarget(agent.id) !== undefined) this.attachQuestion(agent)
     })
@@ -236,6 +237,7 @@ export class SideChat extends TypertRemoteService {
         if (handle.agent === agent) this.handles.delete(handle)
       }
     }, 'side-chat question lifetime')
+    agent.model.select({ provider: this.config.provider, model: this.config.model })
     const admit = (): void => {
       this.assertOpen()
       if (this.ctx.agentPresets.composedPreset(scope) !== record.agentPreset) this.fail('preset', agent.id)
@@ -258,8 +260,7 @@ export class SideChat extends TypertRemoteService {
     }, { prepend: true })
     scope.on('agent/pre-step', (payload, next) => this.track(async () => {
       admit()
-      const initial = this.owner.sessionProjections.stateOf(agent.session, 'sideChat')
-      if (initial === undefined) this.fail('context', agent.id)
+      const initial = this.projection.stateOf(agent.session)
       for (const message of payload.messages) this.validateInput(message, record.sourceSessionId, initial.snapshot !== null)
       await this.sourceHeader(record.sourceSessionId)
       await this.admissible(agent.id)
@@ -267,8 +268,7 @@ export class SideChat extends TypertRemoteService {
       if (decision.kind === 'reject') return decision
       admit()
       this.assertOpen()
-      const projection = this.owner.sessionProjections.stateOf(agent.session, 'sideChat')
-      if (projection === undefined) this.fail('context', agent.id)
+      const projection = this.projection.stateOf(agent.session)
       if (projection.snapshot !== null) return decision
       if (decision.messages.some(message => message.source.kind === 'session-reference'
         && message.source.references.some(reference => reference.sessionId === record.sourceSessionId))) return decision
@@ -276,6 +276,7 @@ export class SideChat extends TypertRemoteService {
       if (direct === undefined) return decision
       const prepared = await this.ctx.sessionReferenceResolver.prepare(
         agent, [...direct.content], [{ sessionId: record.sourceSessionId }],
+        { provider: this.config.provider, model: this.config.model },
         AbortSignal.any([payload.signal, this.lifetime.signal]),
       )
       this.assertOpen()

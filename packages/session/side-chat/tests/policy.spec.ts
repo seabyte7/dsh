@@ -1,7 +1,7 @@
 /** Side-chat execution checks apply to the final scoped configuration and current Session admission. */
 import { brandString } from '@deepseek-ai/dsh-brand'
 import { createUserMessage, ToolCallId } from '@deepseek-ai/dsh-llm'
-import { defineContentToolFixture } from '@deepseek-ai/dsh-tools'
+import { defineContentToolFixture } from '@deepseek-ai/dsh-tool-testkit'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SideChatRequestId } from '../src/types.ts'
 import { boot, removeRoot, temporaryRoot } from './harness.ts'
@@ -39,9 +39,9 @@ describe('side-chat configured policy', () => {
     await target.whenIdle()
     expect(model.requests).toHaveLength(0)
     const result = await ctx.tools.execute({
-      agent: target, name: 'unexpected', callId: ToolCallId('policy-denied'), arguments: {}, signal: new AbortController().signal,
+      agent: target, calls: [{ type: 'tool-call', id: ToolCallId('policy-denied'), name: 'unexpected', arguments: '{}' }], signal: new AbortController().signal,
     })
-    expect(result.isError).toBe(true)
+    expect(result.results[0]?.result.isError).toBe(true)
     expect(JSON.stringify(result)).toContain('Side chat does not permit tools')
     expect(execute).not.toHaveBeenCalled()
   })

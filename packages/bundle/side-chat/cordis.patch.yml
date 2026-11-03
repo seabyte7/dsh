@@ -22,7 +22,5 @@
               prefix: You answer questions about a fixed text snapshot of another conversation. Explain the available context and its limits. You cannot run commands, read files, or change the original task.
               complete: true
               includeRuntimeContext: false
-          - id: tool-presentation
-            name: '@deepseek-ai/dsh-agent-tool-presentation'
-            config:
-              mode: native
+          - id: tool-executor
+            name: '@deepseek-ai/dsh-tool-executor-native'

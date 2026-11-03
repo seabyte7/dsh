@@ -51,6 +51,8 @@ The question entry belongs inside the preset. A missing initializer or a final A
 
 Opening a panel uses `sideChat.lookup` with its source and stable `requestId`, creating nothing. `sideChat.ensure` returns the same target for retries of that pair; a different id creates an independent history. Source-only lookup retains the legacy association and never selects the latest chat. It never submits a prompt. The Client sends questions and stops responses through the existing target Session APIs. Caller cancellation before allocation stops admission; once allocation is durable, creation remains Host-owned.
 
+Question Agents record the configured provider and model before their first step, including when an empty Session resumes.
+
 The first direct text question prepares the source through `session-reference` at its actual pre-step cut. A canonical mention of that same source reuses the existing preparation. Source and target lifecycle checks precede reference resolution; other Session references and non-text attachments reject before source preparation. After the first reference commits, later questions cannot refresh it with another canonical mention. The `sideChat` projection exposes `{ snapshot: null }` before initialization and snapshot metadata afterward; ordinary Sessions expose `null`.
 
 ### Access, failures, and recovery

@@ -8,8 +8,14 @@
     "src"
   ],
   "references": [
+    {"path": "../../packages/client/desktop-completions"},
+    {"path": "../../packages/core/session"},
+
     {
       "path": "../../packages/boot/app-boot"
+    },
+    {
+      "path": "../../packages/util/official-bundles"
     },
     {
       "path": "../../packages/util/home-paths"
@@ -33,10 +39,13 @@
       "path": "../../packages/client/product-analytics/tsconfig.host.json"
     },
     {
-      "path": "../../packages/client/desktop-completions"
+      "path": "../../packages/boot/plugin-manager"
     },
     {
-      "path": "../../packages/core/session"
+      "path": "../../packages/util/file-drag"
+    },
+    {
+      "path": "../../packages/client/ui-file-actions"
     }
   ],
   "exclude": [

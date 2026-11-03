@@ -8,6 +8,8 @@
   name: cordis:system
 - id: tools
   name: cordis:tools
+- id: executor
+  name: cordis:executor
 - id: agents
   name: cordis:agents
 - id: persistence

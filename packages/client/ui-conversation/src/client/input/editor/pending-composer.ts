@@ -8,11 +8,14 @@ import { DraftEditorRuntime } from './runtime.ts'
 /**
  * Bind a feature-owned draft to the ordinary editor and keymap without allocating a Session.
  * @param draft - draft values and callbacks supplied by the hosting feature.
+ * @param removeQuoteLabel - localized quotation removal label.
  * @returns component-owned keyboard operations, absent for Session-bound input.
  */
-export function usePendingComposer(draft: ComposerBarOwnerProps['pendingDraft']): ComposerKeyboard | undefined {
+export function usePendingComposer(draft: ComposerBarOwnerProps['pendingDraft'], removeQuoteLabel: string): ComposerKeyboard | undefined {
   const current = useRef(draft)
   current.current = draft
+  const quoteLabels = useRef({ remove: removeQuoteLabel })
+  quoteLabels.current = { remove: removeQuoteLabel }
   const active = draft !== undefined
   const model = useMemo(() => {
     if (!active) return undefined
@@ -23,6 +26,7 @@ export function usePendingComposer(draft: ComposerBarOwnerProps['pendingDraft'])
         const text = runtime.projection.clipboardText
         if (text !== current.current?.text) current.current?.onChange(text)
       },
+      quoteLabels: () => quoteLabels.current,
       openReference: () => false,
       lexicon: () => lexicon,
       resolveLexicon: () => undefined,

@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-side-chat",
   "description": "Independent owner-only question Sessions with durable source associations and fixed text reference snapshots",
-  "version": "0.2.1-rc.2",
+  "version": "0.2.2-alpha.2",
   "publishConfig": {
     "access": "public"
   },
@@ -69,6 +69,8 @@
     "@deepseek-ai/dsh-scope": "workspace:*"
   },
   "devDependencies": {
+    "@deepseek-ai/dsh-tool-executor-native": "workspace:*",
+    "@deepseek-ai/dsh-tool-testkit": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
     "@deepseek-ai/dsh-agent": "workspace:*",
     "@deepseek-ai/dsh-agent-preset-registry": "workspace:*",

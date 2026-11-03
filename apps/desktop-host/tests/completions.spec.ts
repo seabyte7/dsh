@@ -24,7 +24,8 @@ async function fixture() {
     const inbox = { nextTurn: [] as UserMessage[], nextStep: [] as UserMessage[],
       clear: unsupported, append: unsupported, prepend: unsupported, replace: unsupported,
       remove: unsupported, splice: unsupported }
-    const agent: Agent = { id: session.id, session, inbox, ctx, status: 'idle', options: { provider: 'unused', model: 'unused' },
+    const agent: Agent = { id: session.id, session, inbox, ctx,
+      model: { current: () => ({ provider: 'unused', model: 'unused' }), select: unsupported }, status: 'idle', options: { provider: 'unused', model: 'unused' },
       cancel: unsupported, whenIdle: unsupported, runMaintenance: unsupported, send: unsupported,
       followup: unsupported, steer: unsupported, inject: unsupported }
     agents.set(session.id, agent)

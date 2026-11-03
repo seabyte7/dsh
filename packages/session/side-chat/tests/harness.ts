@@ -22,6 +22,7 @@ import * as Domain from '@deepseek-ai/dsh-storage-domain'
 import * as Json from '@deepseek-ai/dsh-storage-json'
 import System from '@deepseek-ai/dsh-system-prompt'
 import Tools from '@deepseek-ai/dsh-tools'
+import * as NativeExecutor from '@deepseek-ai/dsh-tool-executor-native'
 import Workspaces from '@deepseek-ai/dsh-workspace'
 import SideChat from '../src/index.ts'
 import * as Question from '../src/question.ts'
@@ -44,7 +45,7 @@ export async function boot(root: string) {
     await ctx.plugin(Loader)
     Object.assign(ctx.loader.builtins, {
       include: Include, llm: Llm, agents: Agents, loop: Loop, sessions: Sessions, projections: Projections,
-      system: System, tools: Tools, persistence: Persistence, query: Query, storage: Storage,
+      system: System, tools: Tools, executor: NativeExecutor, persistence: Persistence, query: Query, storage: Storage,
       'storage-json': Json, domain: Domain, workspaces: Workspaces, access: Access,
       references: References, 'preset-registry': Presets, preset: Preset,
       'side-chat': SideChat, 'side-chat-question': Question,
